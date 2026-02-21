@@ -1,4 +1,5 @@
 import { query } from '../../infrastructure/db/postgres';
+import redisClient from '../../infrastructure/db/redis';
 import { FraudService } from '../fraud/fraud.service';
 import { AuditService } from '../audit/audit.service';
 import logger from '../../infrastructure/logger/logger';
@@ -60,7 +61,15 @@ export class InvoiceService {
     }
 
     /**
-     * Stores the invoice record in Postgres.
+     * Checks if an invoice exists by number
+     */
+    static async getInvoiceByNumber(invoiceNumber: string) {
+        const result = await query(`SELECT id, status FROM invoices WHERE "invoiceNumber" = $1`, [invoiceNumber]);
+        return result.rows.length > 0 ? result.rows[0] : null;
+    }
+
+    /**
+     * Stores the invoice record in Postgres and invalidates history caches.
      */
     static async saveInvoiceRecord(data: any) {
         try {
@@ -71,6 +80,16 @@ export class InvoiceService {
          RETURNING *`,
                 [data.invoiceNumber, data.sellerGSTIN, data.buyerGSTIN, data.invoiceDate, data.invoiceAmount, data.irn, data.irnStatus, JSON.stringify(data.lineItems), data.status, data.fraud_score || null]
             );
+
+            // Clear Redis cache so changes reflect instantly
+            if (redisClient.isOpen) {
+                const keys = await redisClient.keys('history:*');
+                if (keys.length > 0) {
+                    await redisClient.del(keys);
+                    logger.info('Deleted stale history caches from Redis');
+                }
+            }
+
             return result.rows[0];
         } catch (error) {
             logger.error('Failed to save invoice record', error);
@@ -79,10 +98,21 @@ export class InvoiceService {
     }
 
     /**
-     * Returns filtered invoices based on user role and id.
+     * Returns filtered invoices based on user role and id, utilizes Redis caching.
      */
     static async fetchHistoryByUser(userId: string, role: string) {
         try {
+            const cacheKey = `history:${role}:${userId}`;
+
+            // Check Cache
+            if (redisClient.isOpen) {
+                const cached = await redisClient.get(cacheKey);
+                if (cached) {
+                    logger.info('Cache hit! Served history from Redis', { cacheKey });
+                    return JSON.parse(cached); // Return immediately (0ms DB delay)
+                }
+            }
+
             let result;
             if (role === 'LENDER') {
                 result = await query(`SELECT * FROM invoices WHERE "buyerGSTIN" = $1 ORDER BY created_at DESC`, [userId]);
@@ -93,6 +123,13 @@ export class InvoiceService {
             } else {
                 return [];
             }
+
+            // Save to Redis Cache for future calls (Expires in 1 hour)
+            if (redisClient.isOpen && result.rows) {
+                await redisClient.set(cacheKey, JSON.stringify(result.rows), { EX: 3600 });
+                logger.info('Saved history to Redis cache', { cacheKey });
+            }
+
             return result.rows;
         } catch (error) {
             logger.error('Failed to fetch invoice history', error);

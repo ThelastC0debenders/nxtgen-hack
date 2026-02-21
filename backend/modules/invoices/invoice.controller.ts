@@ -76,12 +76,20 @@ export class InvoiceController {
                 return;
             }
 
+            // 2. Explicit duplicate check before saving to prevent resetting a VERIFIED invoice
+            const existing = await InvoiceService.getInvoiceByNumber(payload.invoiceNumber);
+            if (existing) {
+                logger.warn('Attempted to upload an invoice that already exists', { invoiceNumber: payload.invoiceNumber });
+                res.status(409).json({ error: 'Invoice already exists in database.' });
+                return;
+            }
+
             const newInvoice = {
                 ...payload,
                 status: 'PENDING_VERIFICATION'
             };
 
-            // 2. Save
+            // 3. Save
             const saved = await InvoiceService.saveInvoiceRecord(newInvoice);
             res.status(201).json({ message: 'Invoice uploaded successfully', data: saved });
         } catch (error: any) {
@@ -94,8 +102,6 @@ export class InvoiceController {
             res.status(500).json({ error: 'Internal Server Error' });
         } finally {
             if (lockAcquired) {
-                logger.info(`[TESTING] Holding lock for 15 seconds. Go check Redis now!`);
-                await new Promise(resolve => setTimeout(resolve, 15000));
                 await RedisLock.releaseLock(lockKey);
             }
         }
