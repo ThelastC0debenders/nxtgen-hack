@@ -80,9 +80,11 @@ const LoginPage = () => {
       return;
     }
 
-    // Success - in a real app, this would redirect or set auth context
+    // Success - redirect based on role
     if (role === 'admin') {
       navigate('/admin');
+    } else if (role === 'lender') {
+      navigate('/lender');
     } else {
       alert(`Successfully logged in as ${role}!`);
     }
