@@ -15,6 +15,12 @@ export class InvoiceController {
 
         try {
             const userRole = (req as any).user?.role || 'SYSTEM'; // Fallback if auth missing
+            const userId = (req as any).user?.id;
+
+            // Force the buyer identifier to be the logged-in user's ID if lender
+            if (userRole === 'LENDER' && userId) {
+                payload.buyerGSTIN = userId;
+            }
 
             // Basic validation
             if (!payload.invoiceNumber || !payload.sellerGSTIN || !payload.buyerGSTIN || !payload.invoiceAmount || !payload.invoiceDate || !payload.irn || !payload.irnStatus || !payload.lineItems) {
@@ -63,6 +69,12 @@ export class InvoiceController {
         let lockAcquired = false;
 
         try {
+            // Force the seller identifier to be the logged-in user's ID
+            const userId = (req as any).user?.id;
+            if (userId) {
+                payload.sellerGSTIN = userId;
+            }
+
             if (!payload.invoiceNumber || !payload.sellerGSTIN || !payload.buyerGSTIN || !payload.invoiceAmount || !payload.invoiceDate || !payload.irn || !payload.irnStatus || !payload.lineItems) {
                 res.status(400).json({ error: 'Missing required fields' });
                 return;
@@ -123,6 +135,41 @@ export class InvoiceController {
             res.status(200).json({ data: history });
         } catch (error: any) {
             logger.error('getInvoiceHistory controller error', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
+    /**
+     * Update the status of an invoice.
+     * Accessible by LENDER and ADMIN roles.
+     */
+    static async updateStatus(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+            const user = (req as any).user;
+
+            if (!id || !status) {
+                res.status(400).json({ error: 'Invoice ID and status are required' });
+                return;
+            }
+
+            // Optional: validate that status is one of the allowed transitions
+            const allowedStatuses = ['FINANCED', 'REJECTED_BY_LENDER', 'CLOSED'];
+            if (!allowedStatuses.includes(status)) {
+                res.status(400).json({ error: 'Invalid status for manual update' });
+                return;
+            }
+
+            const updatedInvoice = await InvoiceService.updateInvoiceStatus(id as string, status, user.role);
+
+            res.status(200).json({ message: 'Status updated successfully', data: updatedInvoice });
+        } catch (error: any) {
+            logger.error('updateStatus controller error', error);
+            if (error.message === 'INVOICE_NOT_FOUND') {
+                res.status(404).json({ error: 'Invoice not found' });
+                return;
+            }
             res.status(500).json({ error: 'Internal Server Error' });
         }
     }

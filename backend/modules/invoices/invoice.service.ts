@@ -136,4 +136,50 @@ export class InvoiceService {
             throw error;
         }
     }
+
+    /**
+     * Updates an invoice status (e.g. from VERIFIED to FINANCED)
+     */
+    static async updateInvoiceStatus(invoiceNumber: string, status: string, userRole: string) {
+        try {
+            // First check if it exists
+            const existing = await this.getInvoiceByNumber(invoiceNumber);
+            if (!existing) {
+                throw new Error('INVOICE_NOT_FOUND');
+            }
+
+            // Update status
+            const result = await query(
+                `UPDATE invoices SET status = $1 WHERE "invoiceNumber" = $2 RETURNING *`,
+                [status, invoiceNumber]
+            );
+
+            const updatedInvoice = result.rows[0];
+
+            // Write an audit log for this state change
+            const payloadString = JSON.stringify(updatedInvoice);
+            const invoiceHash = crypto.createHash('sha256').update(payloadString).digest('hex');
+
+            await AuditService.writeAuditLog({
+                invoice_hash: invoiceHash,
+                status: status,
+                fraud_score: updatedInvoice.fraud_score || 0,
+                actor_role: userRole
+            });
+
+            // Invalidate cache
+            if (redisClient.isOpen) {
+                const keys = await redisClient.keys('history:*');
+                if (keys.length > 0) {
+                    await redisClient.del(keys);
+                    logger.info('Deleted stale history caches from Redis after status update');
+                }
+            }
+
+            return updatedInvoice;
+        } catch (error) {
+            logger.error('Failed to update invoice status', error);
+            throw error;
+        }
+    }
 }

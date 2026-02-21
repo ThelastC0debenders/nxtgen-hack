@@ -1,9 +1,9 @@
-import { 
+import {
   LayoutGrid, FileText, ShieldAlert,
   Store, Building2, Gauge, ChevronDown, Filter, Download, Settings, LogOut
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { 
+import {
   BarChart, Bar, XAxis, ResponsiveContainer
 } from 'recharts';
 import { useState, useEffect } from 'react';
@@ -34,7 +34,7 @@ const CountUp = ({ end, duration = 2000, decimals = 0 }: { end: number, duration
 };
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
-  <div 
+  <div
     onClick={onClick}
     className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
@@ -58,16 +58,10 @@ const StatCard = ({ icon: Icon, title, value, decimals = 0 }: { icon: LucideIcon
   </div>
 );
 
-// --- Mock Data ---
+import api from './api/client';
 
-const distData = [
-  { name: 'MON', LOW: 65, MEDIUM: 20, HIGH: 15 },
-  { name: 'TUE', LOW: 55, MEDIUM: 25, HIGH: 20 },
-  { name: 'WED', LOW: 45, MEDIUM: 35, HIGH: 20 },
-  { name: 'THU', LOW: 45, MEDIUM: 30, HIGH: 25 },
-  { name: 'FRI', LOW: 60, MEDIUM: 25, HIGH: 15 },
-  { name: 'SAT', LOW: 75, MEDIUM: 15, HIGH: 10 },
-];
+// --- Empty initially, will be fetched ---
+
 
 const riskRules = [
   { title: 'High Velocity Submission', severity: 'CRITICAL' },
@@ -76,15 +70,89 @@ const riskRules = [
   { title: 'Near Duplicate Detected', severity: 'ELEVATED' },
 ];
 
-const highRiskEntities = [
-  { id: 'VND-8829-QX', score: '0.92', attempts: '1,240', flags: ['V', 'M', 'D'] },
-  { id: 'VND-4410-ZZ', score: '0.88', attempts: '892', flags: ['V', 'R'] },
-  { id: 'VND-1092-LK', score: '0.74', attempts: '512', flags: ['M'] },
-];
-
 export default function FraudInsights({ onNavigate }: { onNavigate: (page: string) => void }) {
   const [entityFilter, setEntityFilter] = useState('');
   const [showEntityFilter, setShowEntityFilter] = useState(false);
+  const [highRiskEntities, setHighRiskEntities] = useState<any[]>([]);
+  const [distData, setDistData] = useState<any[]>([]);
+  const [stats, setStats] = useState({ highVelocityVendors: 0, multiLenderAttempts: 0, avgScore: 0 });
+
+  useEffect(() => {
+    const fetchInsights = async () => {
+      try {
+        const res = await api.get('/invoices/history');
+        const items = res.data.data || [];
+
+        let totalScore = 0;
+        let duplicateCount = 0;
+        const vendorData = new Map<string, { totalScore: number, attempts: number, duplicates: number, highRisk: number }>();
+
+        const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        const dayBuckets: Record<string, { LOW: number, MEDIUM: number, HIGH: number }> = {};
+        days.forEach(d => dayBuckets[d] = { LOW: 0, MEDIUM: 0, HIGH: 0 });
+
+        items.forEach((inv: any) => {
+          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          totalScore += score;
+
+          if (inv.status === 'DUPLICATE_DETECTED') duplicateCount++;
+
+          // Day Distribution
+          const dt = new Date(inv.created_at);
+          const dayName = days[dt.getDay()];
+          if (score < 30) dayBuckets[dayName].LOW++;
+          else if (score < 75) dayBuckets[dayName].MEDIUM++;
+          else dayBuckets[dayName].HIGH++;
+
+          // Vendor map
+          const vData = vendorData.get(inv.sellerGSTIN) || { totalScore: 0, attempts: 0, duplicates: 0, highRisk: 0 };
+          vData.totalScore += score;
+          vData.attempts += 1;
+          if (inv.status === 'DUPLICATE_DETECTED') vData.duplicates++;
+          if (score > 75) vData.highRisk++;
+          vendorData.set(inv.sellerGSTIN, vData);
+        });
+
+        const newDistData = days.map(d => ({ name: d, ...dayBuckets[d] }));
+
+        const entities: any[] = [];
+        let highVelocityCount = 0;
+
+        vendorData.forEach((val, key) => {
+          const avg = val.attempts > 0 ? (val.totalScore / val.attempts).toFixed(2) : '0.00';
+          const flags: string[] = [];
+          if (val.attempts >= 3) { flags.push('V'); highVelocityCount++; }
+          if (val.duplicates > 0) flags.push('D');
+          if (val.highRisk > 0) flags.push('R');
+
+          // Only show those with some risk or volume
+          if (flags.length > 0 || parseFloat(avg) > 50) {
+            entities.push({
+              id: key,
+              score: avg,
+              attempts: val.attempts.toString(),
+              flags,
+            });
+          }
+        });
+
+        // Sort by highest average fraud score
+        entities.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
+
+        setDistData(newDistData);
+        setHighRiskEntities(entities);
+        setStats({
+          highVelocityVendors: highVelocityCount,
+          multiLenderAttempts: duplicateCount,
+          avgScore: items.length > 0 ? totalScore / items.length : 0
+        });
+
+      } catch (err) {
+        console.error("Failed to fetch fraud insights:", err);
+      }
+    };
+    fetchInsights();
+  }, []);
 
   const filteredEntities = highRiskEntities.filter(e => {
     if (!entityFilter) return true;
@@ -106,7 +174,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
-      
+
       {/* Sidebar - Consistent with other pages */}
       <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
         {/* Top Logo Area */}
@@ -133,7 +201,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
 
       {/* Main Content Areas */}
       <main className="flex-1 flex flex-col min-w-0 pr-6 pb-6 pt-6 pl-8 overflow-y-auto">
-        
+
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div>
@@ -151,14 +219,14 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
 
         {/* Top Stat Cards */}
         <div className="flex gap-6 mb-6">
-          <StatCard icon={Store} title="High Velocity Vendors" value={142} />
-          <StatCard icon={Building2} title="Multi-Lender Attempts" value={894} />
-          <StatCard icon={Gauge} title="Average Fraud Score" value={0.34} decimals={2} />
+          <StatCard icon={Store} title="High Velocity Vendors" value={stats.highVelocityVendors} />
+          <StatCard icon={Building2} title="Multi-Lender Attempts" value={stats.multiLenderAttempts} />
+          <StatCard icon={Gauge} title="Average Fraud Score" value={stats.avgScore} decimals={2} />
         </div>
 
         {/* Grid Layer 2 */}
         <div className="flex gap-6 items-stretch mb-6">
-          
+
           {/* Main Chart Column: Fraud Score Distribution */}
           <div className="flex-1 bg-white rounded-xl border border-[#e2e8f0] shadow-[0_8px_25px_rgba(71,85,105,0.12)] p-6 pb-4 flex flex-col">
             <div className="flex justify-between items-center mb-8">
@@ -173,10 +241,10 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
             <div className="flex-1 min-h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={distData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={36}>
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
                     dy={10}
                   />
@@ -194,7 +262,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
               <h3 className="text-[14px] font-bold text-[#0f172a] uppercase tracking-widest">Triggered Risk Rules</h3>
               <span className="text-[14px] font-bold text-[#475569] hover:text-[#0f172a] cursor-pointer transition-colors">See All</span>
             </div>
-            
+
             <div className="flex flex-col gap-3">
               {riskRules.map((rule, idx) => (
                 <div key={idx} className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)] p-4 flex justify-between items-center cursor-pointer hover:border-[#cbd5e1] transition-colors">
@@ -226,13 +294,13 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
                   autoFocus
                 />
               )}
-              <div 
+              <div
                 onClick={() => { setShowEntityFilter(!showEntityFilter); if (showEntityFilter) setEntityFilter(''); }}
                 className={`w-8 h-8 rounded border border-[#e2e8f0] flex items-center justify-center cursor-pointer transition-colors ${showEntityFilter ? 'bg-[#f1f5f9] text-[#0f172a]' : 'text-[#475569] hover:bg-[#f8fafc]'}`}
               >
                 <Filter size={14} />
               </div>
-              <div 
+              <div
                 onClick={handleDownload}
                 className="w-8 h-8 rounded border border-[#e2e8f0] flex items-center justify-center text-[#475569] cursor-pointer hover:bg-[#f8fafc] transition-colors"
               >
@@ -263,7 +331,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
                   <td className="py-4 px-4 text-[14px] font-bold text-[#0f172a] tracking-tight">{entity.attempts}</td>
                   <td className="py-4 px-4">
                     <div className="flex gap-1.5">
-                      {entity.flags.map(flag => (
+                      {entity.flags.map((flag: string) => (
                         <span key={flag} className="w-5 h-5 flex items-center justify-center rounded bg-[#f8fafc] border border-[#e2e8f0] text-[9px] font-bold text-[#475569] shadow-[0_1px_2px_rgba(71,85,105,0.05)]">
                           {flag}
                         </span>

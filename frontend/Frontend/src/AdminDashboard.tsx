@@ -1,10 +1,10 @@
-import { 
-  LayoutGrid, ShieldAlert, ShieldCheck, 
-  Settings, LogOut, Search, FileText, Ban, Zap, 
-  Calendar, CheckCircle2, XCircle, AlertTriangle 
+import {
+  LayoutGrid, ShieldAlert, ShieldCheck,
+  Settings, LogOut, Search, FileText, Ban, Zap,
+  Calendar, CheckCircle2, XCircle, AlertTriangle
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { 
+import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, Cell
 } from 'recharts';
@@ -36,36 +36,9 @@ const CountUp = ({ end, duration = 2000 }: { end: number, duration?: number }) =
 };
 
 
-const registryLogs = [
-  { time: '14:22:01', id: 'INV-1001', desc: 'Approved – Lender A Registry', status: 'LOGGED', type: 'success' },
-  { time: '14:21:45', id: 'INV-1001', desc: 'Duplicate Attempt – Lender B', status: 'DENIED', type: 'error' },
-  { time: '14:20:30', id: 'VND-V22', desc: 'High Risk Score detected (0.89)', status: 'FLAGGED', type: 'warning' },
-  { time: '14:19:12', id: 'INV-0998', desc: 'Approved – Bank of Heritage', status: 'LOGGED', type: 'success' },
-  { time: '14:18:55', id: 'INV-0997', desc: 'Approved – Apex Capital', status: 'LOGGED', type: 'success' },
-  { time: '14:17:02', id: 'INV-0882', desc: 'Invalid VAT checksum format', status: 'DENIED', type: 'error' },
-  { time: '14:15:21', id: 'INV-0996', desc: 'Approved – Lender A', status: 'LOGGED', type: 'success' },
-  { time: '14:14:44', id: 'VND-V12', desc: 'Expired certificate in KYC module', status: 'REVIEW', type: 'warning' },
-  { time: '14:12:00', id: 'INV-0995', desc: 'Approved – Global Trust', status: 'LOGGED', type: 'success' },
-  { time: '14:10:33', id: 'INV-0994', desc: 'Approved – Lender B', status: 'LOGGED', type: 'success' },
-];
+import api from './api/client';
 
-const radarData = [
-  { subject: 'IDENTITY', A: 80, B: 100, fullMark: 100 },
-  { subject: 'HISTORY', A: 90, B: 100, fullMark: 100 },
-  { subject: 'VELOCITY', A: 60, B: 100, fullMark: 100 },
-  { subject: 'VOLUME', A: 85, B: 100, fullMark: 100 },
-  { subject: 'NETWORK', A: 70, B: 100, fullMark: 100 },
-];
-
-const barData = [
-  { name: 'MON', value: 30, color: '#f1f5f9' },
-  { name: 'TUE', value: 45, color: '#f1f5f9' },
-  { name: 'WED', value: 35, color: '#f1f5f9' },
-  { name: 'THU', value: 85, color: '#ef4444' }, // Highlighted Red
-  { name: 'FRI', value: 40, color: '#f1f5f9' },
-  { name: 'SAT', value: 20, color: '#f1f5f9' },
-  { name: 'SUN', value: 15, color: '#f1f5f9' },
-];
+// --- Empty initially, will be fetched ---
 
 // --- Subcomponents ---
 
@@ -110,6 +83,82 @@ const getStatusBadge = (status: string, type: string) => {
 
 const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [registryLogs, setRegistryLogs] = useState<any[]>([]);
+  const [stats, setStats] = useState({ verified: 0, duplicates: 0, latency: 143, highRiskVendors: 0 });
+
+  // Use static radar/bar for the UI visualization aspects unless we build a dedicated metrics API
+  const radarData = [
+    { subject: 'IDENTITY', A: 80, B: 100, fullMark: 100 },
+    { subject: 'HISTORY', A: 90, B: 100, fullMark: 100 },
+    { subject: 'VELOCITY', A: 60, B: 100, fullMark: 100 },
+    { subject: 'VOLUME', A: 85, B: 100, fullMark: 100 },
+    { subject: 'NETWORK', A: 70, B: 100, fullMark: 100 },
+  ];
+
+  const barData = [
+    { name: 'MON', value: 30, color: '#f1f5f9' },
+    { name: 'TUE', value: 45, color: '#f1f5f9' },
+    { name: 'WED', value: 35, color: '#f1f5f9' },
+    { name: 'THU', value: 85, color: '#ef4444' }, // Highlighted Red
+    { name: 'FRI', value: 40, color: '#f1f5f9' },
+    { name: 'SAT', value: 20, color: '#f1f5f9' },
+    { name: 'SUN', value: 15, color: '#f1f5f9' },
+  ];
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        const res = await api.get('/invoices/history');
+        const items = res.data.data || [];
+
+        let verifiedCount = 0;
+        let duplicateCount = 0;
+        const vendorRiskMap = new Map<string, number>();
+
+        const logs = items.map((inv: any) => {
+          const dt = new Date(inv.created_at);
+          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+
+          if (inv.status === 'VERIFIED') verifiedCount++;
+          if (inv.status === 'DUPLICATE_DETECTED') duplicateCount++;
+
+          const existingMax = vendorRiskMap.get(inv.sellerGSTIN) || 0;
+          vendorRiskMap.set(inv.sellerGSTIN, Math.max(existingMax, score));
+
+          let type = 'success';
+          let displayStatus = 'LOGGED';
+          let desc = `Processed – ${inv.sellerGSTIN}`;
+
+          if (inv.status === 'DUPLICATE_DETECTED') {
+            type = 'error'; displayStatus = 'DENIED'; desc = `Duplicate Hash – ${inv.sellerGSTIN}`;
+          } else if (inv.status.startsWith('REJECTED_')) {
+            type = 'warning'; displayStatus = 'FLAGGED'; desc = `High Risk (${score.toFixed(2)})`;
+          } else if (inv.status === 'PENDING' || inv.status === 'PENDING_VERIFICATION') {
+            type = 'warning'; displayStatus = 'REVIEW'; desc = `Pending Validation`;
+          }
+
+          return {
+            time: dt.toLocaleTimeString('en-US', { hour12: false }),
+            id: inv.invoiceNumber,
+            desc,
+            status: displayStatus,
+            type
+          };
+        });
+
+        let highRiskVendorsCount = 0;
+        vendorRiskMap.forEach((maxScore) => {
+          if (maxScore > 75) highRiskVendorsCount++;
+        });
+
+        setStats(prev => ({ ...prev, verified: verifiedCount, duplicates: duplicateCount, highRiskVendors: highRiskVendorsCount }));
+        setRegistryLogs(logs);
+      } catch (err) {
+        console.error("Failed to fetch admin data", err);
+      }
+    };
+    fetchAdminData();
+  }, []);
 
   const filteredLogs = registryLogs.filter(log => {
     if (!searchQuery) return true;
@@ -146,14 +195,14 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 pr-6 pb-6 pt-6 pl-6 overflow-y-auto">
-        
+
         {/* Top Header */}
         <header className="flex items-center justify-between mb-8">
           <div className="relative w-full max-w-[500px]">
             <Search className="absolute left-[18px] top-1/2 -translate-y-1/2 text-[#475569]" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search Risk IDs, Vendors, or Sessions..." 
+            <input
+              type="text"
+              placeholder="Search Risk IDs, Vendors, or Sessions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white py-3.5 pl-12 pr-4 text-[14px] text-[#0f172a] outline-none shadow-[0_8px_25px_rgba(71,85,105,0.08)] border-none focus:ring-2 focus:ring-[#e2e8f0] transition-shadow placeholder:text-[#475569]"
@@ -170,18 +219,18 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
         {/* 4 Stat Cards */}
         <div className="flex gap-6 mb-6">
-          <StatCard icon={FileText} title="Total Invoices Verified" value={12482} />
-          <StatCard icon={Ban} title="Duplicate Attempts Blocked" value={382} />
-          <StatCard icon={Zap} title="Avg Verification Latency" value={143} unit="ms" />
-          <StatCard icon={ShieldAlert} title="High Risk Vendors" value={29} />
+          <StatCard icon={FileText} title="Total Invoices Verified" value={stats.verified} />
+          <StatCard icon={Ban} title="Duplicate Attempts Blocked" value={stats.duplicates} />
+          <StatCard icon={Zap} title="Avg Verification Latency" value={stats.latency} unit="ms" />
+          <StatCard icon={ShieldAlert} title="High Risk Vendors" value={stats.highRiskVendors} />
         </div>
 
         {/* Main Grid: Left Column and Right Profile */}
         <div className="flex gap-6 items-start">
-          
+
           {/* Left Column */}
           <div className="flex-1 flex flex-col gap-6 min-w-0">
-            
+
             {/* High Density Registry Log */}
             <div className="bg-white rounded-xl border border-[#e2e8f0] overflow-hidden flex flex-col h-[400px] shadow-[0_8px_25px_rgba(71,85,105,0.12)]">
               <div className="flex items-center justify-between px-6 py-5 border-b border-[#f1f5f9] shrink-0">
@@ -196,7 +245,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
                         <td className="py-3.5 px-4 text-[14px] text-[#475569] font-semibold w-[90px]">{log.time}</td>
                         <td className="py-3.5 px-2 w-[130px]">
                           <div className="flex items-center gap-2 text-[14px] font-semibold text-[#334155]">
-                            {log.type === 'success' && <CheckCircle2 size={16} className="text-[#10b981]" strokeWidth={2}/>}
+                            {log.type === 'success' && <CheckCircle2 size={16} className="text-[#10b981]" strokeWidth={2} />}
                             {log.type === 'error' && <XCircle size={16} className="text-[#ef4444]" strokeWidth={2} />}
                             {log.type === 'warning' && <AlertTriangle size={16} className="text-[#f59e0b]" strokeWidth={2} />}
                             {log.id}
@@ -279,7 +328,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
           {/* Right Column */}
           <div className="w-[300px] shrink-0 flex flex-col gap-6">
-            
+
             {/* Duplicate Attempts */}
             <div className="bg-white rounded-xl border border-[#e2e8f0] p-6 pb-2 flex flex-col h-[350px] overflow-hidden shadow-[0_8px_25px_rgba(71,85,105,0.12)]">
               <div className="flex justify-between items-start mb-2">
@@ -294,12 +343,12 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
               {/* Bar Chart */}
               <div className="flex-1 w-[calc(100%+20px)] -ml-5 mt-4 h-full relative">
-                 <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={barData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
                       tick={{ fill: '#475569', fontSize: 10, fontWeight: 600 }}
                       dy={10}
                     />
@@ -327,7 +376,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
             {/* Policy Update Notice */}
             <div className="bg-[#1e293b] rounded-xl shadow-[0_15px_30px_rgba(30,41,59,0.3)] p-6 text-white overflow-hidden relative flex-1 flex flex-col justify-between">
               <div className="absolute -right-8 -top-8 w-24 h-24 bg-white opacity-5 blur-2xl rounded-full"></div>
-              
+
               <div>
                 <div className="flex items-center gap-2 mb-3 relative z-10">
                   <ShieldCheck size={16} className="text-[#64748b]" />
@@ -337,14 +386,14 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
                   System adjusted fraud sensitivity to 0.85 for Tier-1 institutions. Review active rules to ensure compliance.
                 </p>
                 <div className="relative z-10 flex flex-col gap-2 mb-6">
-                   <div className="flex items-center gap-2 text-[14px] text-[#cbd5e1]">
-                     <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full"></div>
-                     Velocity Checks: Active
-                   </div>
-                   <div className="flex items-center gap-2 text-[14px] text-[#cbd5e1]">
-                     <div className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full"></div>
-                     Network Graphs: Syncing
-                   </div>
+                  <div className="flex items-center gap-2 text-[14px] text-[#cbd5e1]">
+                    <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full"></div>
+                    Velocity Checks: Active
+                  </div>
+                  <div className="flex items-center gap-2 text-[14px] text-[#cbd5e1]">
+                    <div className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full"></div>
+                    Network Graphs: Syncing
+                  </div>
                 </div>
               </div>
 

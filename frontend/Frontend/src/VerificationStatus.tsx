@@ -1,44 +1,16 @@
-import { 
+import {
   Upload, Settings, LogOut, Package, CheckCircle, Search,
   ChevronLeft, ChevronRight, RefreshCw, Download, Filter,
-  Check, Clock, X
+  Check, Clock, X, AlertTriangle
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect } from 'react';
-
-// --- Mock Data ---
-
-const verificationRecords = [
-  { id: 'INV-2023-089', lender: 'Capital One Commercial', amount: 12450.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 24, 2024' },
-  { id: 'INV-2023-090', lender: 'JP Morgan Chase', amount: 45200.00, status: 'PENDING', risk: 'Low Risk', timestamp: 'Oct 24, 2024' },
-  { id: 'INV-2023-091', lender: 'Wells Fargo', amount: 8900.50, status: 'CONFLICT', risk: 'High Risk', timestamp: 'Oct 24, 2024' },
-  { id: 'INV-2023-092', lender: 'Citi Group', amount: 156000.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 24, 2024' },
-  { id: 'INV-2023-093', lender: 'Bank of America', amount: 2340.00, status: 'PENDING', risk: 'Medium Risk', timestamp: 'Oct 24, 2024' },
-  { id: 'INV-2023-094', lender: 'US Bank', amount: 33100.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 24, 2024' },
-  { id: 'INV-2023-095', lender: 'Goldman Sachs', amount: 78500.00, status: 'CONFLICT', risk: 'High Risk', timestamp: 'Oct 23, 2024' },
-  { id: 'INV-2023-096', lender: 'Morgan Stanley', amount: 5600.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 23, 2024' },
-  { id: 'INV-2023-097', lender: 'HSBC Holdings', amount: 92000.00, status: 'PENDING', risk: 'Medium Risk', timestamp: 'Oct 23, 2024' },
-  { id: 'INV-2023-098', lender: 'Barclays PLC', amount: 14300.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 23, 2024' },
-  { id: 'INV-2023-099', lender: 'Deutsche Bank', amount: 67800.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 23, 2024' },
-  { id: 'INV-2023-100', lender: 'BNP Paribas', amount: 3200.00, status: 'PENDING', risk: 'Medium Risk', timestamp: 'Oct 23, 2024' },
-  { id: 'INV-2023-101', lender: 'Credit Suisse', amount: 128000.00, status: 'CONFLICT', risk: 'High Risk', timestamp: 'Oct 22, 2024' },
-  { id: 'INV-2023-102', lender: 'UBS Group', amount: 19500.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 22, 2024' },
-  { id: 'INV-2023-103', lender: 'Nomura Holdings', amount: 41200.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 22, 2024' },
-  { id: 'INV-2023-104', lender: 'Mizuho Financial', amount: 8750.00, status: 'PENDING', risk: 'Low Risk', timestamp: 'Oct 22, 2024' },
-  { id: 'INV-2023-105', lender: 'Standard Chartered', amount: 55000.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 21, 2024' },
-  { id: 'INV-2023-106', lender: 'Societe Generale', amount: 23400.00, status: 'CONFLICT', risk: 'High Risk', timestamp: 'Oct 21, 2024' },
-  { id: 'INV-2023-107', lender: 'ING Group', amount: 6100.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 21, 2024' },
-  { id: 'INV-2023-108', lender: 'Santander Group', amount: 87600.00, status: 'PENDING', risk: 'Medium Risk', timestamp: 'Oct 21, 2024' },
-  { id: 'INV-2023-109', lender: 'TD Securities', amount: 34500.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 20, 2024' },
-  { id: 'INV-2023-110', lender: 'RBC Capital', amount: 112000.00, status: 'VERIFIED', risk: 'Low Risk', timestamp: 'Oct 20, 2024' },
-  { id: 'INV-2023-111', lender: 'Macquarie Group', amount: 4800.00, status: 'CONFLICT', risk: 'High Risk', timestamp: 'Oct 20, 2024' },
-  { id: 'INV-2023-112', lender: 'Jefferies LLC', amount: 29700.00, status: 'PENDING', risk: 'Medium Risk', timestamp: 'Oct 20, 2024' },
-];
+import api from './api/client';
 
 // --- Subcomponents ---
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
-  <div 
+  <div
     onClick={onClick}
     className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
@@ -49,19 +21,19 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: Luc
 );
 
 const getStatusBadge = (status: string) => {
-  const config: Record<string, { Icon: LucideIcon; color: string; bg: string; border: string }> = {
-    VERIFIED: { Icon: Check, color: '#10b981', bg: '#10b981/10', border: '#10b981/20' },
-    PENDING: { Icon: Clock, color: '#f59e0b', bg: '#f59e0b/10', border: '#f59e0b/20' },
-    CONFLICT: { Icon: X, color: '#ef4444', bg: '#ef4444/10', border: '#ef4444/20' },
-  };
-  const c = config[status];
-  const { Icon } = c;
+  const isVerified = status === 'VERIFIED';
+  const isPending = status === 'PENDING_VERIFICATION' || status === 'PENDING';
+  const isConflict = status === 'DUPLICATE_DETECTED' || status.startsWith('REJECTED_');
+
+  const Icon = isVerified ? Check : isPending ? Clock : isConflict ? AlertTriangle : X;
+  const color = isVerified ? '#10b981' : isPending ? '#f59e0b' : isConflict ? '#ef4444' : '#64748b';
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-bold tracking-widest uppercase`}
-      style={{ color: c.color, background: `${c.color}10`, border: `1px solid ${c.color}20` }}
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-bold tracking-widest uppercase inline-block whitespace-nowrap`}
+      style={{ color, background: `${color}10`, border: `1px solid ${color}20` }}
     >
       <Icon size={12} strokeWidth={3} />
-      {status}
+      {status.substring(0, 16)}{status.length > 16 ? '...' : ''}
     </span>
   );
 };
@@ -73,7 +45,7 @@ const getRiskBadge = (risk: string) => {
     'High Risk': '#ef4444',
   };
   return (
-    <span className="text-[13px] font-bold" style={{ color: colors[risk] }}>
+    <span className="text-[13px] font-bold" style={{ color: colors[risk] || '#94a3b8' }}>
       {risk}
     </span>
   );
@@ -86,16 +58,45 @@ const formatCurrency = (amount: number) => {
 // --- Main Component ---
 
 export default function VerificationStatus({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [verificationRecords, setVerificationRecords] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterQuery, setFilterQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [statusOpen, setStatusOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const ITEMS_PER_PAGE = 6;
   const statusRef = useRef<HTMLDivElement>(null);
 
-  const uniqueStatuses = ['All Statuses', 'VERIFIED', 'PENDING', 'CONFLICT'];
+  const uniqueStatuses = ['All Statuses', 'VERIFIED', 'PENDING_VERIFICATION', 'DUPLICATE_DETECTED', 'REJECTED_HIGH_RISK'];
+
+  const fetchRecords = async () => {
+    setRefreshing(true);
+    setErrorMsg('');
+    try {
+      const res = await api.get('/invoices/history');
+      // Map Postgres records to the table structure
+      const mapped = (res.data.data || []).map((inv: any) => ({
+        id: inv.invoiceNumber,
+        lender: inv.buyerGSTIN, // Using buyer as lender ID proxy
+        amount: Number(inv.invoiceAmount),
+        status: inv.status,
+        risk: inv.fraud_score > 75 ? 'High Risk' : inv.fraud_score > 30 ? 'Medium Risk' : 'Low Risk',
+        timestamp: new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      }));
+      setVerificationRecords(mapped);
+    } catch (e: any) {
+      console.error("Failed to fetch history:", e);
+      setErrorMsg('Could not fetch real-time verification status from the registry.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -109,13 +110,13 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
   const filteredData = useMemo(() => {
     return verificationRecords.filter(row => {
       const query = (searchQuery || filterQuery).toLowerCase();
-      const matchesSearch = !query || 
-        row.id.toLowerCase().includes(query) || 
+      const matchesSearch = !query ||
+        row.id.toLowerCase().includes(query) ||
         row.lender.toLowerCase().includes(query);
       const matchesStatus = statusFilter === 'All Statuses' || row.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, filterQuery, statusFilter]);
+  }, [searchQuery, filterQuery, statusFilter, verificationRecords]);
 
   const totalEntries = filteredData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / ITEMS_PER_PAGE));
@@ -125,8 +126,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
   const endEntry = Math.min(safeCurrentPage * ITEMS_PER_PAGE, totalEntries);
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    fetchRecords();
   };
 
   const handleExport = () => {
@@ -160,7 +160,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
-      
+
       {/* Sidebar */}
       <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
         <div className="flex items-center gap-3 mb-10 px-2 mt-2">
@@ -186,7 +186,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 pr-6 pb-6 pt-6 pl-8 overflow-y-auto">
-        
+
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div className="flex-1">
@@ -197,7 +197,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={16} />
-              <input 
+              <input
                 type="text"
                 placeholder="Search invoices..."
                 value={searchQuery}
@@ -218,16 +218,22 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
           </div>
         </header>
 
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg shrink-0">
+            <p className="text-[13px] font-bold text-[#ef4444]">{errorMsg}</p>
+          </div>
+        )}
+
         {/* Table Card */}
-        <div className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_8px_25px_rgba(71,85,105,0.08)] flex flex-col flex-1 overflow-hidden">
-          
+        <div className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_8px_25px_rgba(71,85,105,0.08)] flex flex-col flex-1 overflow-hidden min-h-[400px]">
+
           {/* Controls Bar */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#f1f5f9] shrink-0">
             <div className="flex items-center gap-3">
               {/* Filter by Invoice ID */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={14} />
-                <input 
+                <input
                   type="text"
                   placeholder="Filter by Invoice ID..."
                   value={filterQuery}
@@ -238,7 +244,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
 
               {/* Status Dropdown */}
               <div ref={statusRef} className="relative">
-                <div 
+                <div
                   onClick={() => setStatusOpen(!statusOpen)}
                   className="flex items-center gap-2 px-4 py-2.5 border border-[#e2e8f0] rounded-lg cursor-pointer hover:border-[#cbd5e1] transition-colors min-w-[150px]"
                 >
@@ -263,14 +269,14 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
 
             <div className="flex items-center gap-2">
               {/* Refresh */}
-              <button 
+              <button
                 onClick={handleRefresh}
                 className={`w-10 h-10 rounded-lg border border-[#e2e8f0] flex items-center justify-center text-[#475569] cursor-pointer hover:bg-[#f8fafc] transition-all bg-white ${refreshing ? 'animate-spin' : ''}`}
               >
                 <RefreshCw size={16} />
               </button>
               {/* Download */}
-              <button 
+              <button
                 onClick={handleExport}
                 className="w-10 h-10 rounded-lg border border-[#e2e8f0] flex items-center justify-center text-[#475569] cursor-pointer hover:bg-[#f8fafc] transition-colors bg-white"
               >
@@ -321,7 +327,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
             </span>
             <div className="flex items-center gap-1">
               {/* Prev */}
-              <button 
+              <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={safeCurrentPage <= 1}
                 className={`w-8 h-8 rounded border border-[#e2e8f0] flex items-center justify-center transition-colors ${safeCurrentPage <= 1 ? 'text-[#cbd5e1] cursor-not-allowed' : 'text-[#475569] hover:bg-[#f8fafc] cursor-pointer'}`}
@@ -334,19 +340,18 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
                   key={i}
                   onClick={() => typeof page === 'number' && setCurrentPage(page)}
                   disabled={page === '...'}
-                  className={`w-8 h-8 rounded text-[12px] font-bold flex items-center justify-center transition-colors border ${
-                    page === safeCurrentPage 
-                      ? 'bg-[#1e293b] text-white border-[#1e293b]' 
-                      : page === '...' 
-                        ? 'border-transparent text-[#94a3b8] cursor-default' 
-                        : 'border-[#e2e8f0] text-[#475569] hover:bg-[#f8fafc] cursor-pointer'
-                  }`}
+                  className={`w-8 h-8 rounded text-[12px] font-bold flex items-center justify-center transition-colors border ${page === safeCurrentPage
+                    ? 'bg-[#1e293b] text-white border-[#1e293b]'
+                    : page === '...'
+                      ? 'border-transparent text-[#94a3b8] cursor-default'
+                      : 'border-[#e2e8f0] text-[#475569] hover:bg-[#f8fafc] cursor-pointer'
+                    }`}
                 >
                   {page}
                 </button>
               ))}
               {/* Next */}
-              <button 
+              <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={safeCurrentPage >= totalPages}
                 className={`w-8 h-8 rounded border border-[#e2e8f0] flex items-center justify-center transition-colors ${safeCurrentPage >= totalPages ? 'text-[#cbd5e1] cursor-not-allowed' : 'text-[#475569] hover:bg-[#f8fafc] cursor-pointer'}`}

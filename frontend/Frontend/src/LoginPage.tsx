@@ -81,8 +81,13 @@ const LoginPage = () => {
         role: role.toUpperCase() // Ensure it matches backend ROLES ('ADMIN', 'LENDER', 'VENDOR')
       });
 
-      const { role: backendRole } = response.data;
+      const { role: backendRole, userId } = response.data;
       const lowerRole = backendRole.toLowerCase();
+
+      // Store userId for other pages
+      if (userId) {
+        localStorage.setItem('userId', userId);
+      }
 
       // Success - redirect based on role
       if (lowerRole === 'admin') {

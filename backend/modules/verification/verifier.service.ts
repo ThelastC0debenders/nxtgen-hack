@@ -2,6 +2,10 @@ import { InvoiceInput, VerificationResult, VerificationStatus } from "../../shar
 import { normalizeInvoice } from "./canonicalizer";
 import { generateInvoiceHash, createStructuralHash } from "./hasher";
 import { lockInvoice } from "./redisLock";
+import logger from "../../infrastructure/logger/logger";
+
+// Mock valid IRNs for the hackathon
+const VALID_IRNS = new Set(["IRN-123", "IRN-456", "IRN-789", "IRN-999"]);
 
 export async function verifyInvoice(invoice: InvoiceInput): Promise<VerificationResult> {
     const totalStart = Date.now();
@@ -17,18 +21,26 @@ export async function verifyInvoice(invoice: InvoiceInput): Promise<Verification
     const structureHash = createStructuralHash(normalized);
     const hashingMs = Date.now() - hashStart;
 
-    // ── 3. IRN status check ────────────────────────────
-    if (normalized.irnStatus === "INVALID") {
-        return buildResult("REJECTED_IRN_INVALID", invoiceHash, structureHash, false, normalized, {
-            canonicalizationMs,
-            hashingMs,
-            redisMs: 0,
-            totalMs: Date.now() - totalStart,
-        });
+    // ── 3. Mock GST API / IRN status check ─────────────
+
+    // Simulate lookup latency
+    await new Promise(resolve => setTimeout(resolve, 80));
+
+    if (normalized.irn) {
+        if (!VALID_IRNS.has(normalized.irn)) {
+            logger.warn('Mock GST API lookup failed for IRN', { irn: normalized.irn });
+            normalized.irnStatus = "INVALID";
+        } else {
+            logger.info('Mock GST API lookup succeeded for IRN', { irn: normalized.irn });
+            normalized.irnStatus = "VALID";
+        }
+    } else {
+        // Fail securely if no IRN is present per new rules
+        normalized.irnStatus = "INVALID";
     }
 
-    if (normalized.irnStatus === "CANCELLED") {
-        return buildResult("REJECTED_IRN_CANCELLED", invoiceHash, structureHash, false, normalized, {
+    if (normalized.irnStatus === "INVALID") {
+        return buildResult("REJECTED_IRN_INVALID", invoiceHash, structureHash, false, normalized, {
             canonicalizationMs,
             hashingMs,
             redisMs: 0,

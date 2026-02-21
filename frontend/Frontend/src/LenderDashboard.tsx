@@ -1,33 +1,19 @@
-import { 
-  FileText, Search, ChevronLeft, ChevronRight, 
-  Settings, LogOut, AlertTriangle, Building2, BarChart3, ClipboardCheck
+import {
+  FileText, Search, ChevronLeft, ChevronRight,
+  Settings, LogOut, AlertTriangle, Building2, BarChart3
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import api from './api/client';
 
 // --- Mock Data ---
 
-const verificationData = [
-  { time: '14:22:01', id: 'INV-88120', status: 'APPROVED', score: '0.02' },
-  { time: '14:18:45', id: 'INV-88119', status: 'REJECTED', score: '0.94' },
-  { time: '14:15:22', id: 'INV-88118', status: 'APPROVED', score: '0.05' },
-  { time: '14:12:10', id: 'INV-88117', status: 'PENDING', score: '0.42' },
-  { time: '13:58:04', id: 'INV-88116', status: 'APPROVED', score: '0.01' },
-  { time: '13:45:30', id: 'INV-88115', status: 'APPROVED', score: '0.11' },
-  { time: '13:32:11', id: 'INV-88114', status: 'REJECTED', score: '0.88' },
-  { time: '13:20:45', id: 'INV-88113', status: 'APPROVED', score: '0.03' },
-  { time: '13:08:19', id: 'INV-88112', status: 'APPROVED', score: '0.07' },
-  { time: '12:55:33', id: 'INV-88111', status: 'PENDING', score: '0.39' },
-  { time: '12:42:01', id: 'INV-88110', status: 'APPROVED', score: '0.02' },
-  { time: '12:30:18', id: 'INV-88109', status: 'REJECTED', score: '0.91' },
-  { time: '12:18:55', id: 'INV-88108', status: 'APPROVED', score: '0.04' },
-  { time: '12:05:40', id: 'INV-88107', status: 'APPROVED', score: '0.06' },
-];
+// --- Empty initially, will be fetched ---
 
 // --- Subcomponents ---
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
-  <div 
+  <div
     onClick={onClick}
     className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
@@ -39,12 +25,18 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: Luc
 
 const getStatusBadge = (status: string) => {
   const styles: Record<string, string> = {
-    APPROVED: 'text-[#10b981] bg-transparent',
-    REJECTED: 'text-white bg-[#1e293b] px-3 py-1 rounded',
+    VERIFIED: 'text-[#10b981] bg-[#10b981]/10 px-3 py-1 rounded border border-[#10b981]/20',
+    FINANCED: 'text-[#3b82f6] bg-[#3b82f6]/10 px-3 py-1 rounded border border-[#3b82f6]/20',
+    DUPLICATE_DETECTED: 'text-white bg-[#ef4444] px-3 py-1 rounded',
+    REJECTED_HIGH_RISK: 'text-white bg-[#ef4444] px-3 py-1 rounded',
+    REJECTED_BY_LENDER: 'text-[#ef4444] bg-[#ef4444]/10 px-3 py-1 rounded border border-[#ef4444]/20',
+    PENDING_VERIFICATION: 'text-white bg-[#f59e0b] px-3 py-1 rounded',
     PENDING: 'text-white bg-[#f59e0b] px-3 py-1 rounded',
   };
+  const finalStyle = styles[status] || 'text-[#475569] bg-[#e2e8f0] px-3 py-1 rounded';
+
   return (
-    <span className={`text-[12px] font-bold tracking-widest uppercase ${styles[status]}`}>
+    <span className={`text-[12px] font-bold tracking-widest uppercase ${finalStyle}`}>
       {status}
     </span>
   );
@@ -53,9 +45,62 @@ const getStatusBadge = (status: string) => {
 // --- Main Component ---
 
 export default function LenderDashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [verificationData, setVerificationData] = useState<any[]>([]);
+  const [stats, setStats] = useState({ today: 0, approved: 0, rejected: 0, highRisk: 0, total: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 7;
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const res = await api.get('/invoices/history');
+        const items = res.data.data || [];
+
+        let todayCount = 0;
+        let authCount = 0;
+        let rejCount = 0;
+        let riskCount = 0;
+
+        const todayStr = new Date().toDateString();
+
+        const mapped = items.map((inv: any) => {
+          const dt = new Date(inv.created_at);
+          if (dt.toDateString() === todayStr) todayCount++;
+
+          if (inv.status === 'VERIFIED') authCount++;
+          else if (inv.status === 'DUPLICATE_DETECTED' || inv.status.startsWith('REJECTED_')) rejCount++;
+
+          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          if (score > 75) riskCount++;
+
+          return {
+            time: dt.toLocaleTimeString('en-US', { hour12: false }),
+            id: inv.invoiceNumber,
+            status: inv.status,
+            score: score.toFixed(2),
+          };
+        });
+
+        setStats({ today: todayCount, approved: authCount, rejected: rejCount, highRisk: riskCount, total: items.length });
+        setVerificationData(mapped);
+      } catch (err) {
+        console.error("Failed to fetch lender dashboard data:", err);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      await api.put(`/invoices/${id}/status`, { status: newStatus });
+      // Update local state to reflect instantly without a full re-fetch
+      setVerificationData(prev => prev.map(inv => inv.id === id ? { ...inv, status: newStatus } : inv));
+    } catch (err) {
+      console.error(`Failed to update status to ${newStatus}:`, err);
+      alert('Failed to update invoice status. Please check console for details.');
+    }
+  };
 
   const filteredData = useMemo(() => {
     return verificationData.filter(row => {
@@ -63,7 +108,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
       const q = searchQuery.toLowerCase();
       return row.id.toLowerCase().includes(q) || row.status.toLowerCase().includes(q);
     });
-  }, [searchQuery]);
+  }, [verificationData, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -71,7 +116,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
-      
+
       {/* Sidebar */}
       <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
         {/* Top Logo Area */}
@@ -87,7 +132,6 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
 
         <div className="flex flex-col gap-1 flex-1">
           <SidebarItem icon={BarChart3} label="Verification Monitoring" active />
-          <SidebarItem icon={ClipboardCheck} label="Invoice Verification" onClick={() => onNavigate('lender/invoice-verification')} />
           <SidebarItem icon={FileText} label="Invoice History" onClick={() => onNavigate('lender/invoice-history')} />
         </div>
 
@@ -99,7 +143,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 pr-6 pb-6 pt-6 pl-8 overflow-y-auto">
-        
+
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div>
@@ -110,9 +154,9 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search invoices..." 
+              <input
+                type="text"
+                placeholder="Search invoices..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2.5 bg-white border border-[#e2e8f0] rounded-lg text-[13px] font-medium outline-none placeholder:text-[#94a3b8] text-[#0f172a] w-[220px] shadow-sm focus:border-[#cbd5e1] transition-colors"
@@ -135,8 +179,8 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
           <div className="bg-white rounded-xl p-5 border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)]">
             <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] mb-3">Today's Verifications</div>
             <div className="flex items-end justify-between">
-              <div className="text-[32px] font-bold text-[#0f172a] leading-none">142</div>
-              <span className="text-[11px] font-bold text-[#10b981] mb-1">+12% vs yesterday</span>
+              <div className="text-[32px] font-bold text-[#0f172a] leading-none">{stats.today}</div>
+              {/* <span className="text-[11px] font-bold text-[#10b981] mb-1">+12% vs yesterday</span> */}
             </div>
           </div>
 
@@ -144,10 +188,10 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
           <div className="bg-white rounded-xl p-5 border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)]">
             <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] mb-3">Approved Count</div>
             <div className="flex items-end justify-between">
-              <div className="text-[32px] font-bold text-[#0f172a] leading-none">128</div>
+              <div className="text-[32px] font-bold text-[#0f172a] leading-none">{stats.approved}</div>
             </div>
             <div className="w-full bg-[#f1f5f9] h-1.5 rounded-full mt-3 overflow-hidden">
-              <div className="bg-[#1e293b] h-full w-[90%] rounded-full"></div>
+              <div className="bg-[#1e293b] h-full rounded-full" style={{ width: stats.total > 0 ? `${(stats.approved / stats.total) * 100}%` : '0%' }}></div>
             </div>
           </div>
 
@@ -155,8 +199,8 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
           <div className="bg-white rounded-xl p-5 border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)]">
             <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] mb-3">Rejected Count</div>
             <div className="flex items-end justify-between">
-              <div className="text-[32px] font-bold text-[#0f172a] leading-none">14</div>
-              <span className="text-[11px] font-bold text-[#ef4444] mb-1">9.8% rate</span>
+              <div className="text-[32px] font-bold text-[#0f172a] leading-none">{stats.rejected}</div>
+              <span className="text-[11px] font-bold text-[#ef4444] mb-1">{stats.total > 0 ? ((stats.rejected / stats.total) * 100).toFixed(1) : 0}% rate</span>
             </div>
           </div>
 
@@ -164,7 +208,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
           <div className="bg-white rounded-xl p-5 border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)]">
             <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] mb-3">High Risk Alerts</div>
             <div className="flex items-end justify-between">
-              <div className="text-[32px] font-bold text-[#0f172a] leading-none">3</div>
+              <div className="text-[32px] font-bold text-[#0f172a] leading-none">{stats.highRisk}</div>
               <AlertTriangle size={22} className="text-[#f59e0b] mb-1" />
             </div>
           </div>
@@ -172,14 +216,14 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
 
         {/* Main Grid: Table + Risk Alert Summary */}
         <div className="flex gap-6 flex-1 items-stretch">
-          
+
           {/* Recent Verification Activity Table */}
           <div className="flex-1 bg-white rounded-xl border border-[#e2e8f0] shadow-[0_8px_25px_rgba(71,85,105,0.08)] flex flex-col overflow-hidden min-w-0">
-            
+
             {/* Table Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#f1f5f9] shrink-0">
               <h3 className="text-[13px] font-bold text-[#0f172a] uppercase tracking-[0.15em]">Recent Verification Activity</h3>
-              <button 
+              <button
                 onClick={() => onNavigate('lender/invoice-history')}
                 className="text-[11px] font-bold text-[#475569] uppercase tracking-[0.15em] hover:text-[#0f172a] transition-colors cursor-pointer bg-transparent border-none"
               >
@@ -196,6 +240,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
                     <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em]">Invoice ID</th>
                     <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em]">Status</th>
                     <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] text-right">Risk Score</th>
+                    <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] text-center w-[160px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,6 +250,26 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
                       <td className="py-4 px-6 text-[13px] font-bold text-[#0f172a]">{row.id}</td>
                       <td className="py-4 px-6">{getStatusBadge(row.status)}</td>
                       <td className="py-4 px-6 text-[14px] font-bold text-[#0f172a] text-right">{row.score}</td>
+                      <td className="py-4 px-6 text-center">
+                        {!['FINANCED', 'REJECTED_BY_LENDER', 'CLOSED'].includes(row.status) ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleStatusUpdate(row.id, 'FINANCED')}
+                              className="text-[10px] font-bold text-white bg-[#3b82f6] hover:bg-[#2563eb] px-3 py-1.5 rounded uppercase tracking-wider transition-colors"
+                            >
+                              Finance
+                            </button>
+                            <button
+                              onClick={() => handleStatusUpdate(row.id, 'REJECTED_BY_LENDER')}
+                              className="text-[10px] font-bold text-[#ef4444] bg-[#ef4444]/10 hover:bg-[#ef4444]/20 px-3 py-1.5 rounded uppercase tracking-wider transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-[#94a3b8]">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {paginatedData.length === 0 && (
@@ -224,14 +289,14 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
                 Page {safeCurrentPage} of {totalPages}
               </span>
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={safeCurrentPage <= 1}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-md border border-[#e2e8f0] text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${safeCurrentPage <= 1 ? 'text-[#cbd5e1] cursor-not-allowed' : 'text-[#475569] hover:bg-[#f8fafc] cursor-pointer'}`}
                 >
                   <ChevronLeft size={12} /> Previous
                 </button>
-                <button 
+                <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={safeCurrentPage >= totalPages}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-md border border-[#e2e8f0] text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${safeCurrentPage >= totalPages ? 'text-[#cbd5e1] cursor-not-allowed' : 'text-[#0f172a] hover:bg-[#f8fafc] cursor-pointer'}`}
@@ -244,7 +309,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
 
           {/* Risk Alert Summary */}
           <div className="w-[300px] shrink-0 bg-[#1e293b] rounded-xl shadow-[0_15px_30px_rgba(30,41,59,0.3)] p-6 flex flex-col overflow-hidden">
-            
+
             {/* Card Header */}
             <div className="flex items-center gap-2 mb-6">
               <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></div>

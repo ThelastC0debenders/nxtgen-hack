@@ -14,4 +14,7 @@ router.post("/upload", authMiddleware, rbac(["VENDOR"]), InvoiceController.uploa
 // ADMIN + LENDER
 router.post("/verify", authMiddleware, rbac(["ADMIN", "LENDER"]), InvoiceController.verifyInvoice);
 
+// ADMIN + LENDER Update Status
+router.put("/:id/status", authMiddleware, rbac(["ADMIN", "LENDER"]), InvoiceController.updateStatus);
+
 export default router;
