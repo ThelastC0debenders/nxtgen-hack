@@ -34,25 +34,13 @@ export function normalizeIRN(invoice: InvoiceInput): InvoiceInput {
     };
 }
 
-/** Return a new object with keys in stable sorted order */
+/** Return a new object with line items in stable sorted order */
 export function sortPayload(invoice: InvoiceInput): InvoiceInput {
-    const sortedLineItems = [...invoice.lineItems]
-        .map((item) => sortObject(item))
-        .sort((a, b) => {
-            const skuA = a.sku || a.description;
-            const skuB = b.sku || b.description;
-            return skuA.localeCompare(skuB);
-        });
+    const sortedLineItems = [...invoice.lineItems].sort((a, b) => {
+        const skuA = a.sku || a.description;
+        const skuB = b.sku || b.description;
+        return skuA.localeCompare(skuB);
+    });
 
-    const sorted = sortObject({ ...invoice, lineItems: sortedLineItems });
-    return sorted as InvoiceInput;
-}
-
-/** Sort object keys alphabetically (shallow) */
-function sortObject<T extends Record<string, unknown>>(obj: T): T {
-    const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(obj).sort()) {
-        sorted[key] = obj[key];
-    }
-    return sorted as T;
+    return { ...invoice, lineItems: sortedLineItems };
 }
