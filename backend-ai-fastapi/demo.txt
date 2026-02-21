@@ -1,0 +1,38 @@
+Phase 1: Environment & Core Setup (The Foundation)
+requirements.txt: Define the dependencies (e.g., fastapi, uvicorn, pydantic, scikit-learn, pandas, numpy).
+app/core/config.py: Setup environment variables and app configurations using Pydantic's BaseSettings (e.g., API keys, model paths, thresholds).
+app/core/logger.py: Configure a structured logger so we have a good audit trail of what the AI is scoring.
+app/main.py: Initialize the basic FastAPI app with simple middleware (CORS) and include a basic health check router.
+Phase 2: Data Contracts (Schemas & Validation)
+Before we write logic, we need to know what our data looks like. We'll use Pydantic to enforce this.
+
+app/schemas/invoice_input.py: Define what the Node backend will send us (e.g., amount, vendor_id, date, currency, line items, hash).
+app/schemas/fraud_output.py: Define the response (e.g., fraud_score 0.0-1.0, risk_level, triggered_rules).
+app/schemas/similarity_output.py: Define the response for duplicate/near-duplicate checks.
+Phase 3: Utilities & Feature Engineering
+app/utils/hashing.py: Implement robust hashing (SHA-256) for verifying data integrity and identifying exact duplicates.
+app/utils/math_utils.py: Any specific mathematical operations needed for similarity calculations.
+app/services/feature_builder.py: This is critical. It takes raw invoice schemas and transforms them into numerical features (arrays/tensors) that our machine learning models and rule engines can process.
+Phase 4: Core Intelligence Engines (The Brains)
+This is the main work area. We build these independently so they can be unit-tested.
+
+app/services/rule_engine.py: Implement hard-coded business logic (e.g., "If amount > 50,000 AND vendor age < 7 days = HIGH RISK").
+app/services/anomaly_detector.py: Load the pre-trained Isolation Forest model and run the engineered features through it to get an anomaly score.
+app/services/similarity_checker.py: Implement logic (e.g., cosine similarity, fuzzy matching) to detect near duplicates (invoices that aren't exact hash matches but are suspiciously similar).
+app/services/fraud_scorer.py: The orchestrator. It calls the rule engine, anomaly detector, and similarity checker, and blends their outputs into a final synthesized fraud_score.
+Phase 5: API Endpoints (The Interfaces)
+Now we expose our engines to the outside world.
+
+app/api/deps.py: Setup dependencies like authentication (verifying the Node backend is authorized to call us) or loading the ML models into memory once at startup.
+app/api/routes/fraud.py: The POST /score endpoint. Takes invoice_input, calls fraud_scorer, returns fraud_output.
+app/api/routes/similarity.py: endpoint for specifically checking invoice similarity against a corpus.
+app/api/routes/health.py: Update to include model readiness checks.
+Phase 6: Machine Learning Pipeline (Offline)
+We need a way to generate the .pkl files that the API serves.
+
+app/training/generate_dataset.py: Write a script to generate synthetic invoice data (both normal and fraudulent) to train on, saving to data/synthetic_invoices.csv.
+app/training/preprocess.py: Logic to clean and scale the data (saving the scaler.pkl).
+app/training/train_model.py: Train the Isolation Forest model and save it as isolation_forest.pkl along with metadata.json (thresholds, versions).
+Phase 7: Testing & Polishing
+Write Tests: Fill out tests/test_fraud.py and test_similarity.py focusing on edge cases and ensuring our rules fire correctly.
+Dockerization (Optional but recommended): Add a Dockerfile and update docker-compose.yml so everything runs containers.
