@@ -1,17 +1,17 @@
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middlewares/auth.middleware";
 import { rbac } from "../middlewares/rbac.middleware";
+import { InvoiceController } from "../../modules/invoices/invoice.controller";
 
 const router = Router();
 
+// LENDER, VENDOR (History might be checked by both, verification handled inside service if needed)
+router.get("/history", authMiddleware, rbac(["LENDER", "VENDOR", "ADMIN"]), InvoiceController.getInvoiceHistory);
+
 // VENDOR only
-router.post("/upload", authMiddleware, rbac(["VENDOR"]), (req: AuthRequest, res: Response) => {
-    res.json({ message: "Invoice uploaded", user: req.user });
-});
+router.post("/upload", authMiddleware, rbac(["VENDOR"]), InvoiceController.uploadInvoice);
 
 // ADMIN + LENDER
-router.get("/verify", authMiddleware, rbac(["ADMIN", "LENDER"]), (req: AuthRequest, res: Response) => {
-    res.json({ message: "Invoice verification access granted", user: req.user });
-});
+router.post("/verify", authMiddleware, rbac(["ADMIN", "LENDER"]), InvoiceController.verifyInvoice);
 
 export default router;

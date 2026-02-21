@@ -1,0 +1,254 @@
+{
+  "info": {
+    "name": "NxtGen Hack - Backend 3",
+    "description": "API collection for testing the Backend 3 refactored architecture (Invoices, Audit, Admin). Note: Replace {{token}} in authorization with a valid JWT for the respective role.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Service Up Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Public endpoint to verify the service is running."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "1. Upload Invoice (VENDOR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceNumber\": \"INV-001\",\n  \"sellerGSTIN\": \"29aabcu9603r1zm\",\n  \"buyerGSTIN\": \"27aaacm5748q1zp\",\n  \"invoiceDate\": \"2026-02-21\",\n  \"invoiceAmount\": 15000,\n  \"irn\": \"abc123\",\n  \"irnStatus\": \"VALID\",\n  \"lineItems\": [\n    { \"description\": \"Widget A\", \"sku\": \"WA-01\", \"quantity\": 10, \"unitPrice\": 1500, \"total\": 15000 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/invoices/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "upload"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Verify Invoice (ADMIN/LENDER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceNumber\": \"INV-001\",\n  \"sellerGSTIN\": \"29aabcu9603r1zm\",\n  \"buyerGSTIN\": \"27aaacm5748q1zp\",\n  \"invoiceDate\": \"2026-02-21\",\n  \"invoiceAmount\": 15000,\n  \"irn\": \"abc123\",\n  \"irnStatus\": \"VALID\",\n  \"lineItems\": [\n    { \"description\": \"Widget A\", \"sku\": \"WA-01\", \"quantity\": 10, \"unitPrice\": 1500, \"total\": 15000 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/invoices/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Get Invoice History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{lender_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/history",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "history"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "Get Audit Logs (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/audit/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Ledger Integrity (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/audit/verify-chain",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                "verify-chain"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get System Stats (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get System Health (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/system-health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "system-health"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "YOUR_ADMIN_JWT_HERE",
+      "type": "string"
+    },
+    {
+      "key": "vendor_token",
+      "value": "YOUR_VENDOR_JWT_HERE",
+      "type": "string"
+    },
+    {
+      "key": "lender_token",
+      "value": "YOUR_LENDER_JWT_HERE",
+      "type": "string"
+    }
+  ]
+}
