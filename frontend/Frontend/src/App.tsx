@@ -3,6 +3,9 @@ import LoginPage from './LoginPage';
 import AdminDashboard from './AdminDashboard';
 import AuditTrail from './AuditTrail';
 import FraudInsights from './FraudInsights';
+import LenderDashboard from './LenderDashboard';
+import InvoiceVerification from './InvoiceVerification';
+import InvoiceHistory from './InvoiceHistory';
 
 function AppContent() {
   const navigate = useNavigate();
@@ -13,6 +16,9 @@ function AppContent() {
           <Route path="/admin" element={<AdminDashboard onNavigate={(path) => navigate(`/${path}`)} />} />
           <Route path="/admin/audit-trail" element={<AuditTrail onNavigate={(path) => navigate(`/${path}`)} />} />
           <Route path="/admin/fraud-insights" element={<FraudInsights onNavigate={(path) => navigate(`/${path}`)} />} />
+          <Route path="/lender" element={<LenderDashboard onNavigate={(path) => navigate(`/${path}`)} />} />
+          <Route path="/lender/invoice-verification" element={<InvoiceVerification onNavigate={(path) => navigate(`/${path}`)} />} />
+          <Route path="/lender/invoice-history" element={<InvoiceHistory onNavigate={(path) => navigate(`/${path}`)} />} />
         </Routes>
       </div>
   );
