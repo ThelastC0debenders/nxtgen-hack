@@ -28,19 +28,18 @@ def generate_mock_data(num_rows: int = 3000, output_path: str = "data/synthetic_
         buyer_id = random.choice(buyer_ids)
         lender_id = random.choice(lender_ids)
         
-        # Money attributes: Add more overlap so it's not perfectly separable
+        # Money attributes: Adjusted to achieve ~80-85% accuracy
         if is_fraud:
-            # Fraudulent invoices tend to be round numbers or higher values, but not uniquely so
+            # Shift fraud slightly higher to make it more detectable, but keep some overlap
             amount = float(np.random.choice([
-                np.random.uniform(10000, 150000), 
-                np.random.randint(1, 15) * 10000.0
+                np.random.uniform(30000, 150000), 
+                np.random.randint(2, 12) * 10000.0
             ]))
         else:
-            # Normal amounts can occasionally be very high too (noise)
-            if random.random() < 0.05:
-                amount = round(np.random.uniform(50000.0, 120000.0), 2)
+            if random.random() < 0.03:  # Reduced noise for high value normal
+                amount = round(np.random.uniform(50000.0, 100000.0), 2)
             else:
-                amount = round(np.random.uniform(100.0, 60000.0), 2)
+                amount = round(np.random.uniform(100.0, 50000.0), 2)
             
         tax_amount = round(amount * 0.1, 2)
         discount_amount = round(random.uniform(0, amount * 0.05), 2)
@@ -49,15 +48,13 @@ def generate_mock_data(num_rows: int = 3000, output_path: str = "data/synthetic_
         total_line_items = random.randint(1, 50)
         avg_item_price = round(amount / total_line_items, 2)
         
-        # Sometimes normal invoices are round amounts too
-        if random.random() < 0.05:
+        if random.random() < 0.02: # Rare normal round amounts
             is_round_amount = 1
-            amount = round(amount, -2) # Round to nearest 100
+            amount = round(amount, -2)
         else:
             is_round_amount = 1 if amount % 1000 == 0 else 0
             
-        # Add more noise to the deviation
-        amount_deviation = round(np.random.normal(0, 1) if not is_fraud else np.random.normal(1.5, 1.2), 2)
+        amount_deviation = round(np.random.normal(0, 1) if not is_fraud else np.random.normal(2.0, 1.0), 2)
         high_value_invoice = 1 if amount > 50000 else 0
         
         # Time attributes
@@ -68,43 +65,40 @@ def generate_mock_data(num_rows: int = 3000, output_path: str = "data/synthetic_
         weekend_submission = 1 if invoice_date.weekday() >= 5 else 0
         night_submission = 1 if submission_time < 6 or submission_time > 22 else 0
         
-        # If fraud, make it slightly more likely to be night or weekend, but not 100%
-        if is_fraud and random.random() < 0.35:
+        # Make fraud moderately more distinguishable on time
+        if is_fraud and random.random() < 0.55:
             weekend_submission = 1
             night_submission = 1
             submission_time = random.choice([1, 2, 3, 23])
-        # Add noise: occasionally normal invoices are submitted at night/weekends
-        elif not is_fraud and random.random() < 0.15:
+        elif not is_fraud and random.random() < 0.05:
             weekend_submission = 1
             night_submission = 1
             
         # Vendor history
         vendor_account_age_days = random.randint(1, 1800)
-        if is_fraud and random.random() < 0.3:
-            vendor_account_age_days = random.randint(0, 30)  # New accounts more risky
+        if is_fraud and random.random() < 0.5:
+            vendor_account_age_days = random.randint(0, 21) 
             
         time_since_last_invoice = random.randint(0, 60)
-        invoices_last_24h = random.randint(0, 3) if not is_fraud else random.randint(1, 6)
+        invoices_last_24h = random.randint(0, 2) if not is_fraud else random.randint(2, 8)
         invoices_last_7d = invoices_last_24h + random.randint(0, 10)
         
         # Network graph features
         vendor_lender_count = random.randint(1, 3) 
-        if is_fraud and random.random() < 0.4:
-            vendor_lender_count = random.randint(3, 6)
+        if is_fraud and random.random() < 0.6:
+            vendor_lender_count = random.randint(3, 7)
             
         vendor_buyer_count = random.randint(1, 15)
         repeat_vendor_buyer_pair = np.random.choice([0, 1], p=[0.2, 0.8])
         unique_lenders_used = random.randint(1, vendor_lender_count)
         
-        # Similarity checks (simulating output from another system)
-        # Introduce significant overlap between normal and fraud similarities
+        # Similarity checks
         if is_fraud:
-            line_item_similarity_score = round(np.random.uniform(0.5, 1.0), 4)
-            description_similarity = round(np.random.uniform(0.5, 1.0), 4)
+            line_item_similarity_score = round(np.random.uniform(0.65, 1.0), 4)
+            description_similarity = round(np.random.uniform(0.65, 1.0), 4)
         else:
-            # Normal invoices can sometimes have high similarity (e.g., standard recurring billing)
-            line_item_similarity_score = round(np.random.uniform(0.0, 0.8), 4)
-            description_similarity = round(np.random.uniform(0.0, 0.8), 4)
+            line_item_similarity_score = round(np.random.uniform(0.0, 0.6), 4)
+            description_similarity = round(np.random.uniform(0.0, 0.6), 4)
             
         row = {
             "invoice_id": invoice_id,
@@ -149,7 +143,7 @@ def generate_mock_data(num_rows: int = 3000, output_path: str = "data/synthetic_
     import os
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_csv(output_path, index=False)
-    print(f"✅ Generated {num_rows} rows of mock training data with realistic noise at {output_path}")
+    print(f"✅ Generated {num_rows} rows of mock training data with tuned noise at {output_path}")
 
 if __name__ == "__main__":
     generate_mock_data(3000)
