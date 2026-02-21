@@ -23,14 +23,10 @@ app.add_middleware(
 )
 # 2. Include Routers
 app.include_router(health.router, prefix=settings.API_V1_STR)
-# In future phases we will add `app.include_router(fraud.router)`
-# In future phases we will add `app.include_router(similarity.router)`
-
 # 3. Application Lifecycle Events
 @app.on_event("startup")
 async def startup_event():
     logger.info(f"Starting up {settings.PROJECT_NAME}...")
-    # This is where we will load our ML models into memory later in Phase 4/5 
 
 @app.on_event("shutdown")
 async def shutdown_event():
