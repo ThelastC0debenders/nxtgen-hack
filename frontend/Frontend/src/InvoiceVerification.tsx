@@ -44,15 +44,20 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
     setResultData(null);
 
     try {
+      const isRound = Math.random() > 0.5;
+      const mockAmount = isRound ? Math.floor(Math.random() * 50 + 1) * 1000 : Math.floor(Math.random() * 50000) + 1500;
+
       const payload = {
         invoiceNumber: invoiceId,
         sellerGSTIN: vendorId,
         buyerGSTIN: buyerId || localStorage.getItem('userId') || 'LND-8821',
-        invoiceAmount: 10000, // Hardcoded typical amount
+        invoiceAmount: mockAmount,
         invoiceDate: date || new Date().toISOString(),
         irn: irnValue,
         irnStatus: 'VALID',
-        lineItems: []
+        lineItems: [
+          { description: 'Testing Item', quantity: 1, unitPrice: mockAmount, total: mockAmount }
+        ]
       };
 
       const res = await api.post('/invoices/verify', payload);
