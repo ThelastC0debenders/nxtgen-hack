@@ -1,6 +1,6 @@
 {
     "model_type": "IsolationForest",
-    "trained_at": "2026-02-21T17:51:20.141144",
+    "trained_at": "2026-02-21T20:06:56.990596",
     "n_estimators": 100,
     "contamination": 0.05,
     "features_expected": [
