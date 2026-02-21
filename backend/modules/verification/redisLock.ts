@@ -1,6 +1,9 @@
 import redisClient from '../../infrastructure/db/redis';
 import logger from '../../infrastructure/logger/logger';
 
+const LOCK_TTL_MS = 3600000; // 1 hour
+const KEY_PREFIX = 'invoice:lock:';
+
 export class RedisLock {
     /**
      * Acquires a distributed lock for a given key to prevent race conditions.
@@ -41,3 +44,12 @@ export class RedisLock {
         }
     }
 }
+
+/**
+ * Try to acquire a lock for an invoice hash.
+ * Returns true if lock acquired (new invoice), false if duplicate.
+ */
+export async function lockInvoice(hash: string): Promise<boolean> {
+    return RedisLock.acquireLock(`${KEY_PREFIX}${hash}`, LOCK_TTL_MS);
+}
+
