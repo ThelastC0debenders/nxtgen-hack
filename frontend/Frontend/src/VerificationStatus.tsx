@@ -21,7 +21,7 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: Luc
 );
 
 const getStatusBadge = (status: string) => {
-  const isVerified = status === 'VERIFIED';
+  const isVerified = status === 'VERIFIED' || status === 'FINANCED';
   const isPending = status === 'PENDING_VERIFICATION' || status === 'PENDING';
   const isConflict = status === 'DUPLICATE_DETECTED' || status.startsWith('REJECTED_');
 
@@ -69,7 +69,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
   const ITEMS_PER_PAGE = 6;
   const statusRef = useRef<HTMLDivElement>(null);
 
-  const uniqueStatuses = ['All Statuses', 'VERIFIED', 'PENDING_VERIFICATION', 'DUPLICATE_DETECTED', 'REJECTED_HIGH_RISK'];
+  const uniqueStatuses = ['All Statuses', 'VERIFIED', 'FINANCED', 'PENDING_VERIFICATION', 'DUPLICATE_DETECTED', 'REJECTED_HIGH_RISK', 'REJECTED_BY_LENDER'];
 
   const fetchRecords = async () => {
     setRefreshing(true);
@@ -82,7 +82,7 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
         lender: inv.buyerGSTIN, // Using buyer as lender ID proxy
         amount: Number(inv.invoiceAmount),
         status: inv.status,
-        risk: inv.fraud_score > 75 ? 'High Risk' : inv.fraud_score > 30 ? 'Medium Risk' : 'Low Risk',
+        risk: (inv.fraud_score != null ? parseFloat(inv.fraud_score) : 0) > 75 ? 'High Risk' : (inv.fraud_score != null ? parseFloat(inv.fraud_score) : 0) > 30 ? 'Medium Risk' : 'Low Risk',
         timestamp: new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       }));
       setVerificationRecords(mapped);

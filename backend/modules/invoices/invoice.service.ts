@@ -19,7 +19,7 @@ export class InvoiceService {
             const duplicateCheck = await query(`SELECT id, status FROM invoices WHERE "invoiceNumber" = $1`, [payload.invoiceNumber]);
 
             let invoiceStatus = 'VERIFIED';
-            let fraudScoreResult = { score: 0, riskLevel: 'LOW' };
+            let fraudScoreResult: { score: number, riskLevel: string, triggeredRules?: string[] } = { score: 0, riskLevel: 'LOW', triggeredRules: [] };
 
             if (duplicateCheck.rows.length > 0 && duplicateCheck.rows[0].status !== 'PENDING_VERIFICATION') {
                 invoiceStatus = 'DUPLICATE_DETECTED';
@@ -51,6 +51,7 @@ export class InvoiceService {
                 invoiceHash,
                 fraudScore: fraudScoreResult.score,
                 riskLevel: fraudScoreResult.riskLevel,
+                triggeredRules: fraudScoreResult.triggeredRules || [],
                 latency: `${latency}ms`
             };
 
@@ -74,11 +75,11 @@ export class InvoiceService {
     static async saveInvoiceRecord(data: any) {
         try {
             const result = await query(
-                `INSERT INTO invoices ("invoiceNumber", "sellerGSTIN", "buyerGSTIN", "invoiceDate", "invoiceAmount", irn, "irnStatus", "lineItems", status, fraud_score)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT ("invoiceNumber") DO UPDATE SET status = EXCLUDED.status, fraud_score = EXCLUDED.fraud_score
+                `INSERT INTO invoices ("invoiceNumber", "sellerGSTIN", "buyerGSTIN", "invoiceDate", "invoiceAmount", irn, "irnStatus", "lineItems", status, fraud_score, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT ("invoiceNumber") DO UPDATE SET status = EXCLUDED.status, fraud_score = EXCLUDED.fraud_score, metadata = EXCLUDED.metadata
          RETURNING *`,
-                [data.invoiceNumber, data.sellerGSTIN, data.buyerGSTIN, data.invoiceDate, data.invoiceAmount, data.irn, data.irnStatus, JSON.stringify(data.lineItems), data.status, data.fraud_score || null]
+                [data.invoiceNumber, data.sellerGSTIN, data.buyerGSTIN, data.invoiceDate, data.invoiceAmount, data.irn, data.irnStatus, JSON.stringify(data.lineItems), data.status, data.fraud_score || null, data.metadata ? JSON.stringify(data.metadata) : null]
             );
 
             // Clear Redis cache so changes reflect instantly
@@ -114,12 +115,10 @@ export class InvoiceService {
             }
 
             let result;
-            if (role === 'LENDER') {
-                result = await query(`SELECT * FROM invoices WHERE "buyerGSTIN" = $1 ORDER BY created_at DESC`, [userId]);
+            if (role === 'LENDER' || role === 'ADMIN') {
+                result = await query(`SELECT * FROM invoices ORDER BY created_at DESC`);
             } else if (role === 'VENDOR') {
                 result = await query(`SELECT * FROM invoices WHERE "sellerGSTIN" = $1 ORDER BY created_at DESC`, [userId]);
-            } else if (role === 'ADMIN') {
-                result = await query(`SELECT * FROM invoices ORDER BY created_at DESC`);
             } else {
                 return [];
             }

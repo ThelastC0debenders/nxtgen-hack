@@ -62,13 +62,7 @@ import api from './api/client';
 
 // --- Empty initially, will be fetched ---
 
-
-const riskRules = [
-  { title: 'High Velocity Submission', severity: 'CRITICAL' },
-  { title: 'Multi-Lender Attempt', severity: 'CRITICAL' },
-  { title: 'Round Amount Pattern', severity: 'ELEVATED' },
-  { title: 'Near Duplicate Detected', severity: 'ELEVATED' },
-];
+// Dynamic risk rules will populate here
 
 export default function FraudInsights({ onNavigate }: { onNavigate: (page: string) => void }) {
   const [entityFilter, setEntityFilter] = useState('');
@@ -76,6 +70,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
   const [highRiskEntities, setHighRiskEntities] = useState<any[]>([]);
   const [distData, setDistData] = useState<any[]>([]);
   const [stats, setStats] = useState({ highVelocityVendors: 0, multiLenderAttempts: 0, avgScore: 0 });
+  const [riskRules, setRiskRules] = useState<{ title: string, severity: string }[]>([]);
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -91,11 +86,26 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
         const dayBuckets: Record<string, { LOW: number, MEDIUM: number, HIGH: number }> = {};
         days.forEach(d => dayBuckets[d] = { LOW: 0, MEDIUM: 0, HIGH: 0 });
 
+        const triggeredRulesSet = new Set<string>();
+
         items.forEach((inv: any) => {
-          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          const rawScore = inv.fraud_score;
+          const score = rawScore != null ? parseFloat(rawScore) : 0;
           totalScore += score;
 
           if (inv.status === 'DUPLICATE_DETECTED') duplicateCount++;
+
+          // Extract Triggered AI Rules from metadata
+          let rulesFromAI: string[] = [];
+          try {
+            if (typeof inv.metadata === 'string') {
+              rulesFromAI = JSON.parse(inv.metadata).triggered_rules || [];
+            } else if (inv.metadata?.triggered_rules) {
+              rulesFromAI = inv.metadata.triggered_rules;
+            }
+          } catch (e) { }
+
+          rulesFromAI.forEach(r => triggeredRulesSet.add(r));
 
           // Day Distribution
           const dt = new Date(inv.created_at);
@@ -146,6 +156,24 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
           multiLenderAttempts: duplicateCount,
           avgScore: items.length > 0 ? totalScore / items.length : 0
         });
+
+        // Map the collected Set back into the state array
+        const dynamicRules = Array.from(triggeredRulesSet).map(r => ({
+          title: r.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()),
+          severity: (r.includes('REJECTION') || r.includes('DUPLICATE') || r.includes('HIGH') || r.includes('CRITICAL')) ? 'CRITICAL' : 'ELEVATED'
+        }));
+
+        if (dynamicRules.length === 0) {
+          // Keep a few placeholder visual defaults if history has no rules triggered yet
+          dynamicRules.push(
+            { title: 'High Velocity Submission', severity: 'CRITICAL' },
+            { title: 'Multi-Lender Attempt', severity: 'CRITICAL' },
+            { title: 'Round Amount Pattern', severity: 'ELEVATED' },
+            { title: 'Near Duplicate Detected', severity: 'ELEVATED' }
+          );
+        }
+
+        setRiskRules(dynamicRules);
 
       } catch (err) {
         console.error("Failed to fetch fraud insights:", err);

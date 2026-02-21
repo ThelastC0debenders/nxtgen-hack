@@ -117,9 +117,10 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
         const logs = items.map((inv: any) => {
           const dt = new Date(inv.created_at);
-          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          const rawScore = inv.fraud_score;
+          const score = rawScore != null ? parseFloat(rawScore) : 0;
 
-          if (inv.status === 'VERIFIED') verifiedCount++;
+          if (inv.status === 'VERIFIED' || inv.status === 'FINANCED') verifiedCount++;
           if (inv.status === 'DUPLICATE_DETECTED') duplicateCount++;
 
           const existingMax = vendorRiskMap.get(inv.sellerGSTIN) || 0;

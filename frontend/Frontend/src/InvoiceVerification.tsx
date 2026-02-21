@@ -293,7 +293,7 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
                 <div>
                   <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] block mb-1">Fraud Score</span>
                   <span className="text-[24px] font-bold text-[#0f172a] leading-none">
-                    {resultData.fraudScore > 0 ? (resultData.fraudScore / 100).toFixed(2) : 'N/A'}
+                    {resultData.fraudScore > 0 ? (resultData.fraudScore).toFixed(2) : 'N/A'}
                   </span>
                 </div>
                 <div>

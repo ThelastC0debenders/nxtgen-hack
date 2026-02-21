@@ -78,7 +78,7 @@ export default function AuditTrail({ onNavigate }: { onNavigate: (page: string) 
             hash: '0x' + (log.current_hash || '0').substring(0, 32) + '...',
             lender: log.actor_role,
             status: displayStatus,
-            score: typeof log.fraud_score === 'number' ? log.fraud_score.toFixed(2) : '0.00'
+            score: log.fraud_score != null ? parseFloat(log.fraud_score).toFixed(2) : '0.00'
           };
         });
 
