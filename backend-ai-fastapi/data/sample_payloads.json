@@ -37,5 +37,153 @@
             "due_date": null,
             "line_items": []
         }
+    },
+    {
+        "scenario": "ROUND_AMOUNT_INVOICE",
+        "description": "Round amount ($5,000) on a weekday with due_date and line items — only ROUND_AMOUNT_DETECTED should fire.",
+        "payload": {
+            "invoice_id": "INV-2026-003",
+            "vendor_id": "V_0050",
+            "buyer_id": "B_0100",
+            "amount": 5000.00,
+            "currency": "USD",
+            "invoice_date": "2026-02-16",
+            "due_date": "2026-03-16",
+            "line_items": [
+                {
+                    "description": "Consulting Services",
+                    "quantity": 10,
+                    "unit_price": 500.00,
+                    "total": 5000.00
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "WEEKEND_INVOICE",
+        "description": "Non-round amount ($1,234.56) submitted on Saturday (2026-02-21) — only WEEKEND_INVOICE_DATE should fire.",
+        "payload": {
+            "invoice_id": "INV-2026-004",
+            "vendor_id": "V_0051",
+            "buyer_id": "B_0101",
+            "amount": 1234.56,
+            "currency": "USD",
+            "invoice_date": "2026-02-21",
+            "due_date": "2026-03-21",
+            "line_items": [
+                {
+                    "description": "Office Supplies",
+                    "quantity": 1,
+                    "unit_price": 1234.56,
+                    "total": 1234.56
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "HIGH_VALUE_ROUND_INVOICE",
+        "description": "High-value round amount ($75,000) on weekday — HIGH_VALUE_INVOICE + ROUND_AMOUNT_DETECTED fire.",
+        "payload": {
+            "invoice_id": "INV-2026-005",
+            "vendor_id": "V_0052",
+            "buyer_id": "B_0102",
+            "amount": 75000.00,
+            "currency": "USD",
+            "invoice_date": "2026-02-16",
+            "due_date": "2026-03-16",
+            "line_items": [
+                {
+                    "description": "Enterprise Software License",
+                    "quantity": 1,
+                    "unit_price": 75000.00,
+                    "total": 75000.00
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "MISSING_DUE_DATE_ONLY_INVOICE",
+        "description": "Non-round $1,500 on weekday, due_date absent, has line items — only MISSING_DUE_DATE fires.",
+        "payload": {
+            "invoice_id": "INV-2026-006",
+            "vendor_id": "V_0053",
+            "buyer_id": "B_0103",
+            "amount": 1500.00,
+            "currency": "USD",
+            "invoice_date": "2026-02-16",
+            "due_date": null,
+            "line_items": [
+                {
+                    "description": "Marketing Services",
+                    "quantity": 3,
+                    "unit_price": 500.00,
+                    "total": 1500.00
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "BOUNDARY_HIGH_VALUE_INVOICE",
+        "description": "Amount exactly at $50,000 threshold — rule uses > 50000, so HIGH_VALUE must NOT fire. ROUND_AMOUNT_DETECTED fires (50000 % 1000 == 0).",
+        "payload": {
+            "invoice_id": "INV-2026-007",
+            "vendor_id": "V_0054",
+            "buyer_id": "B_0104",
+            "amount": 50000.00,
+            "currency": "USD",
+            "invoice_date": "2026-02-16",
+            "due_date": "2026-03-16",
+            "line_items": [
+                {
+                    "description": "Bulk Hardware Components",
+                    "quantity": 50,
+                    "unit_price": 1000.00,
+                    "total": 50000.00
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "ZERO_AMOUNT_INVOICE",
+        "description": "Amount of $0.0 — neither HIGH_VALUE nor ROUND_AMOUNT triggers (rule requires amount > 0 for ROUND). No other anomalies.",
+        "payload": {
+            "invoice_id": "INV-2026-008",
+            "vendor_id": "V_0055",
+            "buyer_id": "B_0105",
+            "amount": 0.0,
+            "currency": "USD",
+            "invoice_date": "2026-02-16",
+            "due_date": "2026-03-16",
+            "line_items": [
+                {
+                    "description": "Free Sample Product",
+                    "quantity": 1,
+                    "unit_price": 0.0,
+                    "total": 0.0
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "INVOICE_WITH_HASH",
+        "description": "Invoice carrying a pre-computed invoice_hash — the similarity checker must use this hash directly instead of recomputing.",
+        "payload": {
+            "invoice_id": "INV-2026-009",
+            "vendor_id": "V_0042",
+            "buyer_id": "B_0099",
+            "amount": 2450.75,
+            "currency": "USD",
+            "invoice_date": "2026-02-16",
+            "due_date": "2026-03-15",
+            "invoice_hash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+            "line_items": [
+                {
+                    "description": "Premium Widget Supply",
+                    "quantity": 50,
+                    "unit_price": 24.50,
+                    "total": 1225.00
+                }
+            ]
+        }
     }
 ]
