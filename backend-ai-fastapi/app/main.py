@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logger import logger
-from app.api.routes import health
+from app.api.routes import health, fraud, similarity
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -23,6 +23,8 @@ app.add_middleware(
 )
 # 2. Include Routers
 app.include_router(health.router, prefix=settings.API_V1_STR)
+app.include_router(fraud.router, prefix=settings.API_V1_STR, tags=["Core AI Scoring"])
+app.include_router(similarity.router, prefix=settings.API_V1_STR, tags=["Near-Duplicate Checks"])
 # 3. Application Lifecycle Events
 @app.on_event("startup")
 async def startup_event():

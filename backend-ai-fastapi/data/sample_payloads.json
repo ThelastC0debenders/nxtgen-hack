@@ -1,0 +1,41 @@
+[
+    {
+        "scenario": "NORMAL_INVOICE",
+        "payload": {
+            "invoice_id": "INV-2026-001",
+            "vendor_id": "V_0042",
+            "buyer_id": "B_0099",
+            "amount": 2450.75,
+            "currency": "USD",
+            "invoice_date": "2026-02-15",
+            "due_date": "2026-03-15",
+            "line_items": [
+                {
+                    "description": "Premium Widget Supply",
+                    "quantity": 50,
+                    "unit_price": 24.50,
+                    "total": 1225.00
+                },
+                {
+                    "description": "Standard Widget Supply",
+                    "quantity": 100,
+                    "unit_price": 12.2575,
+                    "total": 1225.75
+                }
+            ]
+        }
+    },
+    {
+        "scenario": "SUSPICIOUS_SHELL_INVOICE",
+        "payload": {
+            "invoice_id": "INV-2026-002",
+            "vendor_id": "V_0012",
+            "buyer_id": "B_0084",
+            "amount": 100000.00,
+            "currency": "USD",
+            "invoice_date": "2026-02-21",
+            "due_date": null,
+            "line_items": []
+        }
+    }
+]
