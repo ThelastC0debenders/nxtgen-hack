@@ -1,4 +1,6 @@
 import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 import { env } from "../infrastructure/config/env";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import authRoutes from "./routes/auth.routes";
@@ -11,7 +13,13 @@ import { initRedis } from "../infrastructure/db/redis";
 import logger from "../infrastructure/logger/logger";
 
 const app = express();
+
+app.use(cors({
+    origin: true,
+    credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use("/health", healthRoutes);
 app.use("/api/auth", authRoutes);

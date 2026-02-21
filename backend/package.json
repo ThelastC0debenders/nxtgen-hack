@@ -8,6 +8,8 @@
     },
     "dependencies": {
         "axios": "^1.13.5",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.6",
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "jsonwebtoken": "^9.0.2",
@@ -15,6 +17,8 @@
         "redis": "^5.11.0"
     },
     "devDependencies": {
+        "@types/cookie-parser": "^1.4.10",
+        "@types/cors": "^2.8.19",
         "@types/express": "^5.0.0",
         "@types/jsonwebtoken": "^9.0.9",
         "@types/node": "^22.13.4",
