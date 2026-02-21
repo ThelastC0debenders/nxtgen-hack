@@ -21,7 +21,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # 2. Include Routers
 app.include_router(health.router, prefix=settings.API_V1_STR)
 # In future phases we will add `app.include_router(fraud.router)`
