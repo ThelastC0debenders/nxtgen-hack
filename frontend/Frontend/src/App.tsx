@@ -6,6 +6,8 @@ import FraudInsights from './FraudInsights';
 import LenderDashboard from './LenderDashboard';
 import InvoiceVerification from './InvoiceVerification';
 import InvoiceHistory from './InvoiceHistory';
+import UploadInvoice from './UploadInvoice';
+import VerificationStatus from './VerificationStatus';
 
 function AppContent() {
   const navigate = useNavigate();
@@ -19,6 +21,8 @@ function AppContent() {
           <Route path="/lender" element={<LenderDashboard onNavigate={(path) => navigate(`/${path}`)} />} />
           <Route path="/lender/invoice-verification" element={<InvoiceVerification onNavigate={(path) => navigate(`/${path}`)} />} />
           <Route path="/lender/invoice-history" element={<InvoiceHistory onNavigate={(path) => navigate(`/${path}`)} />} />
+          <Route path="/vendor" element={<UploadInvoice onNavigate={(path) => navigate(`/${path}`)} />} />
+          <Route path="/vendor/verification-status" element={<VerificationStatus onNavigate={(path) => navigate(`/${path}`)} />} />
         </Routes>
       </div>
   );

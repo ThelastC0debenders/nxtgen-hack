@@ -93,7 +93,7 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
           <SidebarItem icon={Settings} label="Settings" />
-          <SidebarItem icon={LogOut} label="Sign Out" />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
         </div>
       </aside>
 

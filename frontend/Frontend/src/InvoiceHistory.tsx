@@ -55,7 +55,7 @@ const getStatusBadge = (status: string) => {
 };
 
 const formatCurrency = (amount: number) => {
-  return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 // --- Main Component ---
@@ -97,7 +97,7 @@ export default function InvoiceHistory({ onNavigate }: { onNavigate: (page: stri
   const endEntry = Math.min(safeCurrentPage * ITEMS_PER_PAGE, totalEntries);
 
   const handleExport = () => {
-    const header = 'Invoice ID,Vendor,Amount (USD),Status,Fraud Score,Timestamp\n';
+    const header = 'Invoice ID,Vendor,Amount (INR),Status,Fraud Score,Timestamp\n';
     const rows = filteredData.map(r => `${r.id},"${r.vendor}",${r.amount},${r.status},${r.score},"${r.timestamp}"`).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -132,7 +132,7 @@ export default function InvoiceHistory({ onNavigate }: { onNavigate: (page: stri
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
           <SidebarItem icon={Settings} label="Settings" />
-          <SidebarItem icon={LogOut} label="Sign Out" />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
         </div>
       </aside>
 
@@ -219,7 +219,7 @@ export default function InvoiceHistory({ onNavigate }: { onNavigate: (page: stri
                 <tr className="border-b border-[#f1f5f9]">
                   <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em]">Invoice ID</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em]">Vendor</th>
-                  <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] text-right">Amount (USD)</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] text-right">Amount (INR)</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] text-center">Status</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] text-center">Fraud Score</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em]">Timestamp</th>
