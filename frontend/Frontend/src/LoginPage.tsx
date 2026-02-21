@@ -85,8 +85,8 @@ const LoginPage = () => {
       navigate('/admin');
     } else if (role === 'lender') {
       navigate('/lender');
-    } else {
-      alert(`Successfully logged in as ${role}!`);
+    } else if (role === 'vendor') {
+      navigate('/vendor');
     }
   };
 

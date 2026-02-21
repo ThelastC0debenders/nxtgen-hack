@@ -71,7 +71,7 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
           <SidebarItem icon={Settings} label="Settings" />
-          <SidebarItem icon={LogOut} label="Sign Out" />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
         </div>
       </aside>
 
@@ -138,7 +138,7 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] mb-2 block">Amount (USD)</label>
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-[0.15em] mb-2 block">Amount (INR)</label>
                 <input 
                   type="number" 
                   placeholder="0.00"

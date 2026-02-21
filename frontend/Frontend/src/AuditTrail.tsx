@@ -107,7 +107,7 @@ export default function AuditTrail({ onNavigate }: { onNavigate: (page: string) 
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
           <SidebarItem icon={Settings} label="Preferences" />
-          <SidebarItem icon={LogOut} label="Sign Out" />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
         </div>
       </aside>
 
@@ -336,7 +336,7 @@ export default function AuditTrail({ onNavigate }: { onNavigate: (page: string) 
 
                  <div className="flex justify-between items-center">
                    <span className="text-[10px] font-bold text-[#64748b] tracking-widest uppercase">Daily Volume</span>
-                   <span className="text-[13px] font-bold text-[#0f172a]">$14.2M</span>
+                   <span className="text-[13px] font-bold text-[#0f172a]">₹14.2M</span>
                  </div>
                </div>
             </div>

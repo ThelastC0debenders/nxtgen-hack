@@ -140,7 +140,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
           <SidebarItem icon={Settings} label="Preferences" />
-          <SidebarItem icon={LogOut} label="Sign Out" />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
         </div>
       </aside>
 
