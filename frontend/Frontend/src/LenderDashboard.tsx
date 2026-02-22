@@ -27,9 +27,9 @@ const getStatusBadge = (status: string) => {
   const styles: Record<string, string> = {
     VERIFIED: 'text-[#10b981] bg-[#10b981]/10 px-3 py-1 rounded border border-[#10b981]/20',
     FINANCED: 'text-[#3b82f6] bg-[#3b82f6]/10 px-3 py-1 rounded border border-[#3b82f6]/20',
-    PENDING_VERIFICATION: 'text-[#f59e0b] bg-[#f59e0b]/10 px-3 py-1 rounded border border-[#f59e0b]/20',
-    DUPLICATE_DETECTED: 'text-[#ef4444] bg-[#ef4444]/10 px-3 py-1 rounded border border-[#ef4444]/20',
-    REJECTED_HIGH_RISK: 'text-[#ef4444] bg-[#ef4444]/10 px-3 py-1 rounded border border-[#ef4444]/20',
+    DUPLICATE_DETECTED: 'text-white bg-[#ef4444] px-3 py-1 rounded',
+    REJECTED_HIGH_RISK: 'text-white bg-[#ef4444] px-3 py-1 rounded',
+    REJECTED_INVALID_IRN: 'text-white bg-[#ef4444] px-3 py-1 rounded',
     REJECTED_BY_LENDER: 'text-[#ef4444] bg-[#ef4444]/10 px-3 py-1 rounded border border-[#ef4444]/20',
     CLOSED: 'text-[#94a3b8] bg-[#94a3b8]/10 px-3 py-1 rounded border border-[#94a3b8]/20',
     PENDING: 'text-white bg-[#f59e0b] px-3 py-1 rounded',

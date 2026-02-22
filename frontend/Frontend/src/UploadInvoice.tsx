@@ -26,6 +26,7 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
   const [buyerId, setBuyerId] = useState('3a2d9faf-ecda-4b71-9b25-5a314263ef84');
   const [irnValue, setIrnValue] = useState('');
   const [issueDate, setIssueDate] = useState('');
+  const [invoiceAmount, setInvoiceAmount] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,28 +57,27 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
   };
 
   const handleSubmit = async () => {
-    if (!invoiceId || !buyerId || !irnValue) {
-      setErrorMsg('Please fill in all required fields (Invoice ID, Buyer ID, IRN).');
+    if (!invoiceId || !buyerId || !irnValue || !invoiceAmount) {
+      setErrorMsg('Please fill in all required fields (Invoice ID, Buyer ID, IRN, Amount).');
       return;
     }
     setSubmitting(true);
     setErrorMsg('');
 
     try {
-      const isRound = Math.random() > 0.5;
-      const mockAmount = isRound ? Math.floor(Math.random() * 50 + 1) * 1000 : Math.floor(Math.random() * 50000) + 1500;
-
       // Create a payload matching the backend expectations
+      const parsedAmount = parseFloat(invoiceAmount);
+
       const payload = {
         invoiceNumber: invoiceId,
         buyerGSTIN: buyerId,
         sellerGSTIN: localStorage.getItem('userId') || 'VND-9904', // Using real auth context instead of hardcoding
-        invoiceAmount: mockAmount, // Dynamic mock amount to vary AI scoring
+        invoiceAmount: parsedAmount, // Using exact user input amount
         invoiceDate: issueDate || new Date().toISOString(),
         irn: irnValue, // Now utilizing the user input field
         irnStatus: 'VALID',
         lineItems: [
-          { description: 'Consulting Services', quantity: 1, unitPrice: mockAmount }
+          { description: 'Consulting Services', quantity: 1, unitPrice: parsedAmount }
         ]
       };
 
@@ -96,6 +96,7 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
     setBuyerId('');
     setIrnValue('');
     setIssueDate('');
+    setInvoiceAmount('');
     setUploadedFile(null);
     setSubmitted(false);
     setErrorMsg('');
@@ -199,8 +200,8 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
             </div>
           </div>
 
-          {/* Row 2: IRN + Issue Date */}
-          <div className="grid grid-cols-2 gap-5 mb-6">
+          {/* Row 2: IRN + Issue Date + Amount */}
+          <div className="grid grid-cols-3 gap-5 mb-6">
             <div>
               <label className="text-[10px] font-bold text-[#0f172a] uppercase tracking-[0.15em] mb-2.5 block">Invoice Registration Number (IRN)</label>
               <div className="relative">
@@ -225,6 +226,20 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
                   onChange={(e) => setIssueDate(e.target.value)}
                   disabled={submitted}
                   className="w-full pl-11 pr-4 py-3 border border-[#e2e8f0] rounded-lg text-[13px] font-semibold text-[#0f172a] outline-none placeholder:text-[#cbd5e1] focus:border-[#94a3b8] transition-colors appearance-none disabled:bg-[#f8fafc] disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-[#0f172a] uppercase tracking-[0.15em] mb-2.5 block">Invoice Amount ($)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94a3b8] font-bold text-[13px]">$</span>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  disabled={submitted}
+                  className="w-full pl-8 pr-4 py-3 border border-[#e2e8f0] rounded-lg text-[13px] font-semibold text-[#0f172a] outline-none placeholder:text-[#cbd5e1] focus:border-[#94a3b8] transition-colors appearance-none disabled:bg-[#f8fafc] disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -284,8 +299,8 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!invoiceId || !buyerId || submitted}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[13px] font-bold tracking-[0.05em] uppercase border-none transition-colors cursor-pointer ${!invoiceId || !buyerId || submitted
+              disabled={!invoiceId || !buyerId || !irnValue || !invoiceAmount || submitted}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[13px] font-bold tracking-[0.05em] uppercase border-none transition-colors cursor-pointer ${!invoiceId || !buyerId || !irnValue || !invoiceAmount || submitted
                 ? 'bg-[#cbd5e1] text-white cursor-not-allowed'
                 : 'bg-[#1e293b] text-white hover:bg-[#334155]'
                 }`}

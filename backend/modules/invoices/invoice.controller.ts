@@ -18,10 +18,7 @@ export class InvoiceController {
             const userRole = (req as any).user?.role || 'SYSTEM'; // Fallback if auth missing
             const userId = (req as any).user?.id;
 
-            // Force the buyer identifier to be the logged-in user's ID if lender
-            if (userRole === 'LENDER' && userId) {
-                payload.buyerGSTIN = userId;
-            }
+            // For demo purposes, we will not override the payload GSTINs with integer User IDs.
 
             // Basic validation
             if (!payload.invoiceNumber || !payload.sellerGSTIN || !payload.buyerGSTIN || !payload.invoiceAmount || !payload.invoiceDate || !payload.irn || !payload.irnStatus || !payload.lineItems) {
@@ -71,11 +68,7 @@ export class InvoiceController {
         let lockAcquired = false;
 
         try {
-            // Force the seller identifier to be the logged-in user's ID
-            const userId = (req as any).user?.id;
-            if (userId) {
-                payload.sellerGSTIN = userId;
-            }
+            // For demo purposes, we will not override the payload GSTINs with integer User IDs.
 
             if (!payload.invoiceNumber || !payload.sellerGSTIN || !payload.buyerGSTIN || !payload.invoiceAmount || !payload.invoiceDate || !payload.irn || !payload.irnStatus || !payload.lineItems) {
                 res.status(400).json({ error: 'Missing required fields' });
@@ -90,11 +83,22 @@ export class InvoiceController {
                 return;
             }
 
+            // 1.5 Mock GST Verification Check (runs before duplicate check)
+            const isGstValid = InvoiceService.mockGstVerification(payload.irn);
+            if (!isGstValid) {
+                logger.warn('Upload blocked: Invalid IRN', { invoiceNumber: payload.invoiceNumber, irn: payload.irn });
+
+                // Return 400 to the Vendor so they see the error immediately 
+                // and it never reaches the DB or the Lender
+                res.status(400).json({ error: 'GST Verification Failed: Invalid IRN.' });
+                return;
+            }
+
             // 2. Explicit duplicate check before saving to prevent resetting a VERIFIED invoice
-            const existing = await InvoiceService.getInvoiceByNumber(payload.invoiceNumber);
+            const existing = await InvoiceService.getInvoiceByNumberOrIrn(payload.invoiceNumber, payload.irn);
             if (existing) {
-                logger.warn('Attempted to upload an invoice that already exists', { invoiceNumber: payload.invoiceNumber });
-                res.status(409).json({ error: 'Invoice already exists in database.' });
+                logger.warn('Attempted to upload an invoice that already exists or reuses IRN', { invoiceNumber: payload.invoiceNumber, irn: payload.irn });
+                res.status(409).json({ error: 'Invoice Number or IRN already exists in database.' });
                 return;
             }
 
