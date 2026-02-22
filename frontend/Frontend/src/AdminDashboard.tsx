@@ -1,7 +1,7 @@
 import {
   LayoutGrid, ShieldAlert, ShieldCheck,
   Settings, LogOut, Search, FileText, Ban, Zap,
-  Calendar, CheckCircle2, XCircle, AlertTriangle
+  Calendar, CheckCircle2, XCircle, AlertTriangle, Menu
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, Cell
 } from 'recharts';
 import { useState, useEffect } from 'react';
+import Modal from './components/Modal';
 
 // --- Mock Data ---
 
@@ -42,11 +43,11 @@ import api from './api/client';
 
 // --- Subcomponents ---
 
-const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
-  <div onClick={onClick} className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}>
+const SidebarItem = ({ icon: Icon, label, active = false, isCollapsed = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, isCollapsed?: boolean, onClick?: () => void }) => (
+  <div onClick={onClick} title={isCollapsed ? label : undefined} className={`flex items-center ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3.5 px-3 py-3'} mb-1 rounded-lg cursor-pointer transition-all duration-300 ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}>
     {!active && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>}
-    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10`} strokeWidth={active ? 2.5 : 2} />
-    <span className={`text-[14px] relative z-10 ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>
+    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10 shrink-0`} strokeWidth={active ? 2.5 : 2} />
+    {!isCollapsed && <span className={`text-[14px] relative z-10 truncate ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>}
   </div>
 );
 
@@ -82,11 +83,21 @@ const getStatusBadge = (status: string, type: string) => {
 // --- Main Layout ---
 
 const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void }) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [registryLogs, setRegistryLogs] = useState<any[]>([]);
   const [stats, setStats] = useState({ verified: 0, duplicates: 0, latency: 143, highRiskVendors: 0, fraudScoreIndex: '0.0', anomalyClusters: '00' });
 
   const [radarData, setRadarData] = useState<any[]>([]);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, icon?: React.ReactNode}>({
+    isOpen: false, title: '', message: ''
+  });
+
+  const showModal = (title: string, message: string, icon: React.ReactNode = <AlertTriangle size={24} className="text-[#3b82f6]" />) => {
+    setModalConfig({ isOpen: true, title, message, icon });
+  };
 
   const barData = [
     { name: 'MON', value: 30, color: '#f1f5f9' },
@@ -214,26 +225,37 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
     <div className="flex h-screen w-full bg-[#f1f5f9] text-[#0f172a] overflow-hidden">
 
       {/* Sidebar - Fixed Height 100vh */}
-      <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
+      <aside className={`h-screen shrink-0 flex flex-col ${isSidebarOpen ? 'px-4 w-[260px]' : 'px-0 w-[80px]'} py-6 bg-[#1e293b] bg-[repeating-linear-gradient(-45deg,transparent,transparent_20px,rgba(255,255,255,0.04)_20px,rgba(255,255,255,0.04)_23px)] transition-all duration-300 ease-in-out`}>
+        
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className={`mb-4 flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center w-12 h-12 mx-auto'} text-[#94a3b8] hover:text-white transition-colors ${isSidebarOpen ? 'w-full' : ''} rounded-lg hover:bg-white/5 py-2 cursor-pointer`}
+          title="Toggle Sidebar"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Top Logo Area */}
-        <div className="flex items-center gap-3 mb-10 px-2 mt-2">
-          <div className="bg-white/10 rounded-lg p-2.5 flex items-center justify-center">
+        <div className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 mb-10' : 'justify-center flex-col gap-2 mb-8'}`}>
+          <div className={`bg-white/10 rounded-lg p-2.5 flex items-center justify-center shrink-0 ${!isSidebarOpen ? 'w-12 h-12' : ''}`}>
             <LayoutGrid className="text-white" size={24} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[18px] font-bold text-white leading-tight tracking-tight">Admin</span>
-          </div>
+          {isSidebarOpen && (
+            <div className="flex flex-col">
+              <span className="text-[18px] font-bold text-white leading-tight tracking-tight whitespace-nowrap">Admin</span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-1 flex-1">
-          <SidebarItem icon={LayoutGrid} label="Risk Overview" active />
-          <SidebarItem icon={FileText} label="Audit Trails" onClick={() => onNavigate?.('admin/audit-trail')} />
-          <SidebarItem icon={ShieldAlert} label="Fraud Insights" onClick={() => onNavigate?.('admin/fraud-insights')} />
+          <SidebarItem icon={LayoutGrid} label="Risk Overview" active isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={FileText} label="Audit Trails" onClick={() => onNavigate?.('admin/audit-trail')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={ShieldAlert} label="Fraud Insights" onClick={() => onNavigate?.('admin/fraud-insights')} isCollapsed={!isSidebarOpen} />
         </div>
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
-          <SidebarItem icon={Settings} label="Preferences" />
-          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
+          <SidebarItem icon={Settings} label="Preferences" onClick={() => showModal('Preferences', 'Global admin preferences will be unlocked in v1.1.')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} isCollapsed={!isSidebarOpen} />
         </div>
       </aside>
 
@@ -312,7 +334,12 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
                 </table>
               </div>
               <div className="py-4 border-t border-[#f1f5f9] text-center shrink-0">
-                <button className="text-[14px] font-bold text-[#475569] uppercase tracking-wider hover:text-[#0f172a] transition-colors cursor-pointer bg-transparent border-none">View All Transactions</button>
+                <button 
+                  className="text-[14px] font-bold text-[#475569] uppercase tracking-wider hover:text-[#0f172a] transition-colors cursor-pointer bg-transparent border-none"
+                  onClick={() => showModal('Transactions Log', 'To view all historical transactions beyond the live cache, please navigate to the Audit Trails section.', <FileText size={24} className="text-[#3b82f6]" />)}
+                >
+                  View All Transactions
+                </button>
               </div>
             </div>
 
@@ -445,7 +472,10 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
                 </div>
               </div>
 
-              <button className="w-full py-2.5 bg-[#334155] border border-white/10 rounded-lg text-[14px] font-bold tracking-widest hover:bg-[#475569] transition-colors relative z-10 cursor-pointer text-white mt-auto">
+              <button 
+                onClick={() => showModal('Policy Updated', "Sensitivity thresholds have been pushed to all active validator nodes. Changes take effect on the next block.", <ShieldCheck size={24} className="text-[#10b981]" />)}
+                className="w-full py-2.5 bg-[#334155] border border-white/10 rounded-lg text-[14px] font-bold tracking-widest hover:bg-[#475569] transition-colors relative z-10 cursor-pointer text-white mt-auto"
+              >
                 UPDATE POLICY
               </button>
             </div>
@@ -454,6 +484,14 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
         </div>
       </main>
+
+      <Modal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        icon={modalConfig.icon}
+      />
     </div>
   );
 };
