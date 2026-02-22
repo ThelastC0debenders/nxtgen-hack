@@ -4,6 +4,9 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
+import {
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip
+} from 'recharts';
 import api from './api/client';
 
 // --- Subcomponents ---
@@ -79,6 +82,39 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
     setVerificationResult('idle');
     setResultData(null);
     setErrorMsg('');
+  };
+
+  const getRadarData = (result: any) => {
+    if (!result) return [];
+    
+    // Base scores
+    let identity = 20;
+    let network = 20;
+    let history = 20;
+    let volume = 20;
+    let velocity = 20;
+
+    const rules = result.triggeredRules || [];
+    
+    // Map rules to axes
+    rules.forEach((rule: string) => {
+      if (rule.includes('GSTIN') || rule.includes('IDENTITY') || rule.includes('INVALID')) identity += 40;
+      if (rule.includes('DUPLICATE') || rule.includes('LENDER')) network += 50;
+      if (rule.includes('HISTORY') || rule.includes('REJECT')) history += 45;
+      if (rule.includes('AMOUNT') || rule.includes('VOLUME') || rule.includes('ROUND')) volume += 40;
+      if (rule.includes('VELOCITY') || rule.includes('FREQUENCY') || rule.includes('TIME')) velocity += 50;
+    });
+
+    const score = result.fraudScore || 0;
+    const factor = score > 20 ? 1.2 : 1;
+
+    return [
+      { subject: 'IDENTITY', value: Math.min(100, identity * factor), fullMark: 100 },
+      { subject: 'NETWORK', value: Math.min(100, network * factor), fullMark: 100 },
+      { subject: 'HISTORY', value: Math.min(100, history * factor), fullMark: 100 },
+      { subject: 'VOLUME', value: Math.min(100, volume * factor), fullMark: 100 },
+      { subject: 'VELOCITY', value: Math.min(100, velocity * factor), fullMark: 100 },
+    ];
   };
 
   return (
@@ -359,6 +395,70 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
                   </div>
                   <div className="w-full bg-[#f1f5f9] rounded-full h-1.5 overflow-hidden">
                     <div className="bg-[#f59e0b] h-full" style={{ width: `${Math.max(5, ((resultData.latencyMetrics?.redisMs || 0) / (resultData.latencyMetrics?.totalMs || 1)) * 100)}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Risk Profile Analysis Card */}
+            <div className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)] p-8 col-span-2 mt-2">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h3 className="text-[18px] font-bold text-[#0f172a] tracking-tight mb-1">Risk Profile Analysis</h3>
+                  <p className="text-[12px] font-bold text-[#64748b] uppercase tracking-[0.15em]">Multi-Vector Fraud Correlation</p>
+                </div>
+                <div className="flex items-center gap-4 text-[12px] font-bold text-[#475569]">
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#1e293b]"></div>Current</div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#cbd5e1]"></div>Baseline</div>
+                </div>
+              </div>
+
+              <div className="flex items-center h-[280px]">
+                {/* Radar Chart */}
+                <div className="flex-1 h-full -ml-8">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={getRadarData(resultData)}>
+                      <PolarGrid stroke="#e2e8f0" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar name="Current" dataKey="value" stroke="#1e293b" fill="#1e293b" fillOpacity={0.05} strokeWidth={2} />
+                      {/* Baseline Polygon (invisible data representing 20-30 baseline) */}
+                      <Radar name="Baseline" dataKey="fullMark" stroke="transparent" fill="transparent" fillOpacity={0} />
+                      <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 'bold' }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Right Side Stats */}
+                <div className="w-[320px] flex flex-col gap-4">
+                  {/* Fraud Score Index Container */}
+                  <div className="p-6 rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+                    <div className="flex justify-between items-end mb-3">
+                      <span className="text-[15px] font-bold text-[#0f172a]">Fraud Score Index</span>
+                      <span className="text-[28px] font-bold text-[#0f172a] leading-none">{resultData.fraudScore > 0 ? (resultData.fraudScore).toFixed(1) : 'N/A'}</span>
+                    </div>
+                    <div className="w-full bg-[#f1f5f9] rounded-full h-2 mb-4 overflow-hidden">
+                      <div className="bg-[#1e293b] h-full" style={{ width: `${Math.min(100, resultData.fraudScore)}%` }}></div>
+                    </div>
+                    <p className="text-[13px] font-medium text-[#64748b] leading-relaxed">
+                      {resultData.riskLevel === 'HIGH' ? 'High risk velocity or anomalies detected during multi-vector scan.' : 
+                       resultData.riskLevel === 'MEDIUM' ? 'Moderately elevated risks identified in verification checks.' : 
+                       'No significant fraud vectors detected against historical baseline.'}
+                    </p>
+                  </div>
+
+                  {/* Anomalous Clusters Container */}
+                  <div className="p-6 rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+                    <div className="flex justify-between items-end mb-3">
+                      <span className="text-[15px] font-bold text-[#0f172a]">Anomalous Clusters</span>
+                      <span className="text-[28px] font-bold text-[#0f172a] leading-none">{(resultData.triggeredRules?.length || 0).toString().padStart(2, '0')}</span>
+                    </div>
+                    <div className="w-full bg-[#f1f5f9] rounded-full h-2 mb-4 overflow-hidden">
+                      <div className="bg-[#1e293b] h-full" style={{ width: `${Math.min(100, (resultData.triggeredRules?.length || 0) * 20)}%` }}></div>
+                    </div>
+                    <p className="text-[13px] font-medium text-[#64748b] leading-relaxed">
+                      {resultData.triggeredRules?.length > 0 ? `Concentrated activities found across ${resultData.triggeredRules?.length} vector profiles.` : 'No anomalous behavioral clusters identified.'}
+                    </p>
                   </div>
                 </div>
               </div>

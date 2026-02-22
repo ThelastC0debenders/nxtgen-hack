@@ -8,8 +8,9 @@ export interface Invoice {
   irn: string;
   irnStatus: string;
   lineItems: any[];
-  status: 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'DUPLICATE_DETECTED';
+  status: 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'DUPLICATE_DETECTED' | 'FINANCED' | 'REJECTED_BY_LENDER';
   fraud_score?: number;
+  metadata?: any;
   created_at?: Date;
 }
 
@@ -26,6 +27,7 @@ export const InvoiceSchemaSQL = `
     "lineItems" JSONB NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING_VERIFICATION',
     fraud_score NUMERIC(5, 2),
+    metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
   );
   
