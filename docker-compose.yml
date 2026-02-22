@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: nxtgen-db
+    environment:
+      POSTGRES_USER: saaj376
+      POSTGRES_PASSWORD: saaj376
+      POSTGRES_DB: nextgen
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saaj376 -d nextgen"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nxtgen-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend-ai:
+    build:
+      context: ./backend-ai-fastapi
+      dockerfile: Dockerfile
+    container_name: nxtgen-ai
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nxtgen-backend
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - JWT_SECRET=super-secret-key-for-testing
+      - DB_USER=saaj376
+      - DB_PASSWORD=saaj376
+      - DB_NAME=nextgen
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_URL=http://backend-ai:8000
+      - AI_TIMEOUT_MS=5000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-ai:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend/Frontend
+      dockerfile: Dockerfile
+    container_name: nxtgen-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:

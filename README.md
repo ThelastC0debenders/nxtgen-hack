@@ -55,7 +55,29 @@ Three services communicate over HTTP:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (One-Click Setup)
+
+The entire NxtGen platform is containerized for sub-second deployment. Ensure you have **Docker** and **Docker Compose** installed.
+
+```bash
+# Clone the repository
+git clone https://github.com/ThelastC0debenders/nxtgen-hack.git
+cd nxtgen-hack
+
+# Run the automated setup script
+chmod +x setup.sh
+./setup.sh
+```
+
+**What this does:**
+1. Generates `.env` files with secure defaults.
+2. Boots **PostgreSQL**, **Redis**, **Node Backend**, **Python AI**, and **Frontend**.
+3. Automatically generates the dataset and **trains the AI model**.
+4. Initializes the database schema.
+
+---
+
+## 🛠️ Manual Setup (Alternative)
 
 **Prerequisites:** Node 18+, Python 3.10+, PostgreSQL 14+, Redis 7+
 
