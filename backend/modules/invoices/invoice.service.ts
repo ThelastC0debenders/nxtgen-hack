@@ -12,7 +12,7 @@ export class InvoiceService {
      */
     static mockGstVerification(irn: string): boolean {
         // List of pre-approved valid IRNs for the hackathon demo
-        const validIrns = ['IRN-1001', 'IRN-1002', 'IRN-1003', 'IRN-VALID-123', 'TEST-IRN-999'];
+        const validIrns = ['IRN-1001', 'IRN-1002', 'IRN-1003', 'IRN-1004', 'IRN-1005', 'IRN-1006', 'IRN-1007', 'IRN-1008', 'IRN-VALID-123', 'TEST-IRN-999'];
 
         // Log the simulation
         logger.info(`[MOCK GST API] Verifying IRN: ${irn}`);
