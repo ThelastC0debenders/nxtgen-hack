@@ -11,13 +11,9 @@ async function checkState() {
     console.log(aud.rows);
 
     if (redisClient.isOpen) {
-        console.log("--- REDIS: CACHE KEYS ---");
-        const keys = await redisClient.keys('*');
-        console.log(keys);
-
-        for (const k of keys) {
-            console.log(`Key ${k}: `, await redisClient.get(k));
-        }
+        console.log("--- REDIS: FLUSHING CACHE ---");
+        await redisClient.flushAll();
+        console.log("Cache flushed");
         await redisClient.quit();
     }
 }
