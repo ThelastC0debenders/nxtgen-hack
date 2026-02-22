@@ -31,45 +31,39 @@ Because the SDK leverages TypeScript, your IDE will provide native autocomplete 
 
 ```typescript
 import { NxtGenClient, InvoicePayload } from '@nxtgen/fraud-sdk';
+import axios from 'axios';
 
-// 1. Initialize Client
-// For production use your active Developer API Token 
-const fraudClient = new NxtGenClient('YOUR_ACTIVE_SESSION_TOKEN', 'sandbox');
+// 1. Authenticate with the NxtGen backend to get a live session token
+const loginRes = await axios.post('http://your-backend/api/auth/login', {
+    email: 'your-email@example.com',
+    role: 'LENDER',
+    password: 'your-password'
+});
+const sessionCookie = loginRes.headers['set-cookie'][0].match(/session=([^;]+)/)[1];
 
-// 2. Define your Payload (mapped to our InvoicePayload schema)
+// 2. Initialize the SDK Client
+const fraudClient = new NxtGenClient(sessionCookie, 'sandbox');
+
+// 3. Define your invoice
+// ⚠️  The IRN must be in the GST Whitelist for verification to succeed
 const targetDocument: InvoicePayload = {
-    invoiceNumber: "INV-992-API",
-    buyerGSTIN: "LND-8821",  
-    sellerGSTIN: "VND-9904",
-    invoiceAmount: 75200.50, // High Value
-    invoiceDate: "2026-02-21", // Weekend Submission
-    irn: "IRN-010-333"
+    invoiceNumber: 'INV-992-API',
+    buyerGSTIN: 'LND-8821',
+    sellerGSTIN: 'VND-9904',
+    invoiceAmount: 75000,        // Explicit amount entered by user
+    invoiceDate: '2026-02-21',   // Weekend submission
+    irn: 'IRN-VALID-123',        // Must be in approved GST whitelist
+    irnStatus: 'VALID',
+    lineItems: [
+        { description: 'API Consulting', quantity: 75, unitPrice: 1000, total: 75000 }
+    ]
 };
 
-// 3. Verify Document against ML Architecture
-async function checkFraud() {
-    try {
-        const report = await fraudClient.verifyFraudRisk(targetDocument);
-        
-        console.log(`Document Risk Score: ${report.fraudScore.toFixed(2)}/100`);
-        console.log(`Risk Level: ${report.riskLevel}`); // LOW, MEDIUM, or HIGH
-
-        if (report.duplicate) {
-             console.error("CRITICAL: Invoice already exists in another lender's registry!");
-        }
-
-        // View dynamic AI rationale rules
-        report.triggeredRules?.forEach(rule => {
-             console.log(`Triggered AI Flag: ${rule}`); 
-             // e.g. "ROUND_AMOUNT_DETECTED", "WEEKEND_INVOICE_DATE"
-        });
-
-    } catch (error) {
-        console.error("SDK Authentication or Validation Error", error);
-    }
-}
-
-checkFraud();
+// 4. Run fraud verification
+const report = await fraudClient.verifyFraudRisk(targetDocument);
+console.log(`Fraud Score: ${report.fraudScore.toFixed(2)}/100`);
+console.log(`Risk Level:  ${report.riskLevel}`);
+report.triggeredRules?.forEach(rule => console.log(`⚠️ ${rule}`));
 ```
 
 ---
@@ -84,6 +78,38 @@ This commits the document permanently to the network. It requires a `VENDOR` rol
 
 ### `getHistory(): Promise<any[]>`
 Pulls the complete array of historical transactions, scores, and network statuses mapped to your Session Token's oversight layer.
+
+---
+
+---
+
+## 🔐 GST IRN Whitelist
+
+The NxtGen backend runs a **mock GST Portal verification** on every invoice before ML scoring. The IRN (`Invoice Registration Number`) must exist in the approved whitelist or the invoice will be rejected with `REJECTED_INVALID_IRN` before the AI even runs.
+
+**Pre-approved IRNs for Sandbox:**
+
+| IRN | Notes |
+|---|---|
+| `IRN-1001` through `IRN-1008` | Standard demo IRNs |
+| `IRN-VALID-123` | Integration testing IRN |
+| `TEST-IRN-999` | SDK demo IRN |
+
+> In production, this would query the official GSTN (Goods and Services Tax Network) API to validate the IRN digitally.
+
+---
+
+## 🎯 AI Rule Triggers — Cheat Sheet
+
+Use these to craft invoices that exercise different AI risk pathways:
+
+| What To Do | Rule Triggered | Score Impact |
+|---|---|---|
+| `invoiceAmount > 50000` | `HIGH_VALUE_INVOICE` | +30 |
+| Amount is multiple of 1000 | `ROUND_AMOUNT_DETECTED` | +20 |
+| `invoiceDate` falls on Saturday/Sunday | `WEEKEND_INVOICE_DATE` | +15 |
+| No `due_date` provided | `MISSING_DUE_DATE` | +10 |
+| No `lineItems` array | `ZERO_LINE_ITEMS` | +50 |
 
 ---
 
