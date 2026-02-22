@@ -6,35 +6,47 @@ interface SidebarProps {
   onSectionClick: (id: string) => void;
 }
 
-const sections = [
-  // index.md
-  { id: 'documentation', number: '01', label: 'Documentation' },
-  { id: 'the-problem', number: '02', label: 'The Problem' },
-  { id: 'the-solution', number: '03', label: 'The Solution' },
-  { id: 'core-capabilities', number: '04', label: 'Core Capabilities' },
-  { id: 'user-roles', number: '05', label: 'User Roles' },
-  { id: 'quick-start', number: '06', label: 'Quick Start' },
-  // architecture.md
-  { id: 'system-diagram', number: '07', label: 'System Diagram' },
-  { id: 'components', number: '08', label: 'Components' },
-  { id: 'request-flows', number: '09', label: 'Request Flows' },
-  { id: 'repository-structure', number: '10', label: 'Repository Structure' },
-  // backend.md
-  { id: 'nodejs-backend', number: '11', label: 'Node.js Backend' },
-  { id: 'fastapi-ai-service', number: '12', label: 'FastAPI AI Service' },
-  // api-reference.md
-  { id: 'authentication', number: '13', label: 'API: Auth' },
-  { id: 'invoices', number: '14', label: 'API: Invoices' },
-  { id: 'audit-logs', number: '15', label: 'API: Audit Logs' },
-  { id: 'ai-service-endpoints', number: '16', label: 'API: AI Service' },
-  // deployment.md
-  { id: 'role-based-access-control-rbac', number: '17', label: 'RBAC' },
-  { id: 'security-highlights', number: '18', label: 'Security Highlights' },
-  { id: 'audit-trail-hash-chain-mechanics', number: '19', label: 'Audit Trail Mechanics' },
-  { id: 'environment-variables', number: '20', label: 'Env Variables' },
-  { id: 'running-the-services', number: '21', label: 'Running Services' },
-  { id: 'testing', number: '22', label: 'Testing' },
-  { id: 'future-improvements', number: '23', label: 'Future Improvements' }
+const navCategories = [
+  {
+    title: 'Overview',
+    items: [
+      { id: 'documentation', label: 'Documentation' },
+      { id: 'the-problem', label: 'The Problem' },
+      { id: 'the-solution', label: 'The Solution' },
+      { id: 'core-capabilities', label: 'Core Capabilities' },
+      { id: 'user-roles', label: 'User Roles' },
+      { id: 'quick-start', label: 'Quick Start' },
+    ]
+  },
+  {
+    title: 'Architecture',
+    items: [
+      { id: 'system-diagram', label: 'System Diagram' },
+      { id: 'components', label: 'Components' },
+      { id: 'request-flows', label: 'Request Flows' },
+      { id: 'repository-structure', label: 'Repository Structure' },
+    ]
+  },
+  {
+    title: 'SDK & Integration',
+    items: [
+      { id: 'sdk-integration-guide', label: 'Getting Started' },
+      { id: 'prerequisites', label: 'Prerequisites' },
+      { id: 'nodejs-sdk-typescript', label: 'Node.js SDK' },
+      { id: 'python-sdk', label: 'Python SDK' },
+      { id: 'required-header-content-type', label: 'Headers' },
+      { id: 'error-handling-pattern', label: 'Error Handling' },
+    ]
+  },
+  {
+    title: 'API Reference',
+    items: [
+      { id: 'authentication', label: 'Auth Endpoints' },
+      { id: 'invoices', label: 'Invoice Endpoints' },
+      { id: 'audit-logs', label: 'Audit Endpoints' },
+      { id: 'ai-service-endpoints', label: 'AI Endpoints' },
+    ]
+  }
 ];
 
 export default function Sidebar({ activeSection, onSectionClick }: SidebarProps) {
@@ -69,21 +81,26 @@ export default function Sidebar({ activeSection, onSectionClick }: SidebarProps)
       </div>
 
       <nav ref={navRef} className="sidebar-nav">
-        <div className="sidebar-section-label">Sections</div>
-        {sections.map((section) => (
-          <a
-            key={section.id}
-            className={`sidebar-item ${activeSection === section.id ? 'active' : ''}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onSectionClick(section.id);
-            }}
-            href={`#${section.id}`}
-          >
-            <span className="sidebar-item-dot"></span>
-            <span className="sidebar-item-number">{section.number}</span>
-            <span>{section.label}</span>
-          </a>
+        {navCategories.map((category) => (
+          <div key={category.title} className="sidebar-category">
+            <div className="sidebar-section-label" style={{ marginTop: '24px', marginBottom: '8px', color: '#888' }}>
+              {category.title}
+            </div>
+            {category.items.map((item) => (
+              <a
+                key={item.id}
+                className={`sidebar-item ${activeSection === item.id ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onSectionClick(item.id);
+                }}
+                href={`#${item.id}`}
+                style={{ paddingLeft: '16px', fontSize: '14px', borderLeft: activeSection === item.id ? '2px solid #00ff88' : '2px solid transparent' }}
+              >
+                <span>{item.label}</span>
+              </a>
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -95,8 +112,9 @@ export default function Sidebar({ activeSection, onSectionClick }: SidebarProps)
         color: 'var(--text-muted)',
         letterSpacing: '1px',
         textTransform: 'uppercase',
+        marginTop: 'auto'
       }}>
-        v1.0 — Last C0debenders
+        v2.0 — SDK API Ref
       </div>
     </aside>
   );

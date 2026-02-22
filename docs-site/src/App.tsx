@@ -15,15 +15,14 @@ function App() {
     const files = [
       'index.md',
       'architecture.md',
-      'backend.md',
-      'api-reference.md',
-      'deployment.md'
+      'sdk-guide.md',
+      'api-reference.md'
     ];
 
     const basePath = import.meta.env.BASE_URL;
 
     Promise.all(
-      files.map(file => fetch(`${basePath}${file}`).then(res => {
+      files.map(file => fetch(`${basePath}${file}?t=${Date.now()}`).then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status} when fetching ${file}`);
         return res.text();
       }))
