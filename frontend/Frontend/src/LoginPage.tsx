@@ -17,6 +17,24 @@ const VALID_CREDENTIALS = {
   vendor: { email: 'vendor@gmail.com', password: '1234567890' }
 };
 
+const slides = [
+  {
+    title: "Admin dashboard",
+    description: "Monitor high-density registry logs, maintain an immutable financing ledger, and leverage real-time fraud intelligence.",
+    images: [admindash, adminhash, adminrisk]
+  },
+  {
+    title: "Lenders domain",
+    description: "Content for the Lenders domain will be updated shortly.",
+    images: [lenderdash, lenderhis, lenderhis]
+  },
+  {
+    title: "Vendors domain",
+    description: "Content for the Vendors domain will be updated shortly.",
+    images: [vendorveri, vendortable, vendorveri] // reusing vendorveri as 3rd image since only 2 were provided
+  }
+];
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -27,32 +45,13 @@ const LoginPage = () => {
   const [email, setEmail] = useState('admin@gmail.com');
   const [password, setPassword] = useState('1234567890');
   const [error, setError] = useState('');
-
-  const slides = [
-    {
-      title: "Admin dashboard",
-      description: "Monitor high-density registry logs, maintain an immutable financing ledger, and leverage real-time fraud intelligence.",
-      images: [admindash, adminhash, adminrisk]
-    },
-    {
-      title: "Lenders domain",
-      description: "Content for the Lenders domain will be updated shortly.",
-      images: [lenderdash, lenderhis, lenderhis]
-    },
-    {
-      title: "Vendors domain",
-      description: "Content for the Vendors domain will be updated shortly.",
-      images: [vendorveri, vendortable, vendorveri] // reusing vendorveri as 3rd image since only 2 were provided
-    }
-  ];
-
   // Auto-advance slideshow
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, []);
 
   // Handle role change to prepopulate correct email/password, and tie the slide to the role
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -110,7 +109,7 @@ const LoginPage = () => {
     <div className="min-h-screen w-full flex items-center justify-center p-[20px] box-border relative">
       <div className="flex flex-col md:flex-row w-full md:w-[90vw] md:max-w-[1200px] min-h-[100vh] md:min-h-[600px] md:h-[85vh] bg-white md:rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)] overflow-hidden">
         {/* Left Form Section */}
-        <div className="flex-1 py-[30px] px-[20px] md:py-[40px] md:px-[60px] flex flex-col justify-center bg-white z-20 relative">
+        <div className="flex-1 py-[30px] px-[20px] md:py-[40px] md:px-[60px] flex flex-col justify-center bg-white bg-[repeating-linear-gradient(-45deg,transparent,transparent_10px,rgba(14,165,233,0.08)_10px,rgba(14,165,233,0.08)_11px)] z-20 relative">
           <div className="flex items-center gap-3 mb-10">
             <div className="bg-[#137780] text-white w-9 h-9 rounded-lg flex items-center justify-center">
               <Shield size={20} strokeWidth={2.5} />
@@ -198,36 +197,55 @@ const LoginPage = () => {
 
           {/* Fanned Image Stack */}
           <div className="flex-1 w-full flex items-center justify-center relative z-10 scale-[0.8] origin-top -translate-y-4">
-            {/* Left Back Image (-25 deg) */}
-            <div
-              className="absolute w-[75%] max-w-[380px] rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden border-[4px] border-white/20 z-10 opacity-80 pointer-events-none transition-all duration-700 ease-in-out"
-              style={{ transform: 'rotate(-25deg) translateX(-110px) translateY(80px)' }}
-            >
-              <img src={slides[currentSlide].images[1]} alt="Dashboard View 2" className="w-full h-auto object-cover block" />
-            </div>
+            {slides.map((slide, index) => {
+              const isActive = index === currentSlide;
+              return (
+                <div
+                  key={index}
+                  className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out ${isActive ? 'opacity-100 z-20' : 'opacity-0 z-10 pointer-events-none'}`}
+                >
+                  {/* Left Back Image (-25 deg) */}
+                  <div
+                    className={`absolute w-[75%] max-w-[380px] rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden border-[4px] border-white/20 z-10 opacity-80 pointer-events-none transition-all duration-1000 ease-in-out ${isActive ? 'rotate-[-25deg] -translate-x-[110px] translate-y-[80px]' : 'rotate-[-10deg] -translate-x-[50px] translate-y-[40px]'}`}
+                  >
+                    <img src={slide.images[1]} alt="Dashboard View 2" className="w-full h-auto object-cover block" />
+                  </div>
 
-            {/* Right Back Image (+25 deg) */}
-            <div
-              className="absolute w-[75%] max-w-[380px] rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden border-[4px] border-white/20 z-10 opacity-80 pointer-events-none transition-all duration-700 ease-in-out"
-              style={{ transform: 'rotate(25deg) translateX(110px) translateY(80px)' }}
-            >
-              <img src={slides[currentSlide].images[2]} alt="Dashboard View 3" className="w-full h-auto object-cover block" />
-            </div>
+                  {/* Right Back Image (+25 deg) */}
+                  <div
+                    className={`absolute w-[75%] max-w-[380px] rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.6)] overflow-hidden border-[4px] border-white/20 z-10 opacity-80 pointer-events-none transition-all duration-1000 ease-in-out ${isActive ? 'rotate-[25deg] translate-x-[110px] translate-y-[80px]' : 'rotate-[10deg] translate-x-[50px] translate-y-[40px]'}`}
+                  >
+                    <img src={slide.images[2]} alt="Dashboard View 3" className="w-full h-auto object-cover block" />
+                  </div>
 
-            {/* Center Front Image (straight) */}
-            <div
-              className="absolute w-[85%] max-w-[420px] rounded-xl shadow-[0_30px_60px_rgba(0,0,0,0.7)] overflow-hidden border-[4px] border-white/30 z-20 transition-all duration-700 ease-in-out"
-            >
-              <img src={slides[currentSlide].images[0]} alt="Dashboard View 1" className="w-full h-auto object-cover block" />
-            </div>
+                  {/* Center Front Image (straight) */}
+                  <div
+                    className={`absolute w-[85%] max-w-[420px] rounded-xl shadow-[0_30px_60px_rgba(0,0,0,0.7)] overflow-hidden border-[4px] border-white/30 z-20 transition-all duration-1000 ease-in-out ${isActive ? 'scale-100 translate-y-0' : 'scale-95 translate-y-[40px]'}`}
+                  >
+                    <img src={slide.images[0]} alt="Dashboard View 1" className="w-full h-auto object-cover block" />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="relative z-30 text-center text-white mt-auto pt-8">
-            <div className="">
-              <h2 className="text-[24px] font-semibold m-0 mb-2.5 drop-shadow-md">{slides[currentSlide].title}</h2>
-              <p className="text-[14px] text-[#a4b3b5] m-0 mb-[30px] leading-relaxed drop-shadow">{slides[currentSlide].description}</p>
-            </div>
-            <div className="flex gap-2 justify-center">
+          <div className="relative z-30 text-center text-white mt-auto pt-8 min-h-[160px] flex flex-col justify-end">
+             <div className="relative w-full h-[120px]">
+              {slides.map((slide, index) => {
+                const isActive = index === currentSlide;
+                return (
+                  <div
+                    key={index}
+                    className={`absolute bottom-0 left-0 w-full transition-all duration-1000 ease-in-out ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+                  >
+                    <h2 className="text-[24px] font-semibold m-0 mb-2.5 drop-shadow-md">{slide.title}</h2>
+                    <p className="text-[14px] text-[#a4b3b5] m-0 mb-[30px] leading-relaxed drop-shadow mx-auto max-w-[80%]">{slide.description}</p>
+                  </div>
+                );
+              })}
+             </div>
+             
+             <div className="flex gap-2 justify-center mt-4">
               {slides.map((_, index) => (
                 <button
                   key={index}

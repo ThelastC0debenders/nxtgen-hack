@@ -1,7 +1,7 @@
 import {
   Upload, Settings, LogOut, Package, CheckCircle, Search,
   ChevronLeft, ChevronRight, RefreshCw, Download, Filter,
-  Check, Clock, X, AlertTriangle
+  Check, Clock, X, AlertTriangle, Menu
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -9,14 +9,15 @@ import api from './api/client';
 
 // --- Subcomponents ---
 
-const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, active = false, isCollapsed = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, isCollapsed?: boolean, onClick?: () => void }) => (
   <div
     onClick={onClick}
-    className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
+    title={isCollapsed ? label : undefined}
+    className={`flex items-center ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3.5 px-3 py-3'} mb-1 rounded-lg cursor-pointer transition-all duration-300 ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
     {!active && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>}
-    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10`} strokeWidth={active ? 2.5 : 2} />
-    <span className={`text-[14px] relative z-10 ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>
+    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10 shrink-0`} strokeWidth={active ? 2.5 : 2} />
+    {!isCollapsed && <span className={`text-[14px] relative z-10 truncate ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>}
   </div>
 );
 
@@ -58,6 +59,7 @@ const formatCurrency = (amount: number) => {
 // --- Main Component ---
 
 export default function VerificationStatus({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [verificationRecords, setVerificationRecords] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterQuery, setFilterQuery] = useState('');
@@ -162,25 +164,38 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
 
       {/* Sidebar */}
-      <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
-        <div className="flex items-center gap-3 mb-10 px-2 mt-2">
-          <div className="bg-white/10 rounded-lg p-2.5 flex items-center justify-center">
+      {/* Sidebar */}
+      <aside className={`h-screen shrink-0 flex flex-col ${isSidebarOpen ? 'px-4 w-[260px]' : 'px-0 w-[80px]'} py-6 bg-[#1e293b] bg-[repeating-linear-gradient(-45deg,transparent,transparent_20px,rgba(255,255,255,0.04)_20px,rgba(255,255,255,0.04)_23px)] transition-all duration-300 ease-in-out`}>
+        
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className={`mb-4 flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center w-12 h-12 mx-auto'} text-[#94a3b8] hover:text-white transition-colors ${isSidebarOpen ? 'w-full' : ''} rounded-lg hover:bg-white/5 py-2 cursor-pointer`}
+          title="Toggle Sidebar"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* Top Logo Area */}
+        <div className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 mb-10' : 'justify-center flex-col gap-2 mb-8'}`}>
+          <div className={`bg-white/10 rounded-lg p-2.5 flex items-center justify-center shrink-0 ${!isSidebarOpen ? 'w-12 h-12' : ''}`}>
             <Package className="text-white" size={24} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[14px] font-bold text-white leading-tight tracking-tight uppercase">Vendor Portal</span>
-            <span className="text-[10px] font-semibold text-[#64748b] tracking-wider">Monitoring Node</span>
-          </div>
+          {isSidebarOpen && (
+            <div className="flex flex-col">
+              <span className="text-[14px] font-bold text-white leading-tight tracking-tight uppercase whitespace-nowrap">Vendor Portal</span>
+              <span className="text-[10px] font-semibold text-[#64748b] tracking-wider whitespace-nowrap">Monitoring Node</span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-1 flex-1">
-          <SidebarItem icon={Upload} label="Upload Invoice" onClick={() => onNavigate('vendor')} />
-          <SidebarItem icon={CheckCircle} label="Verification Status" active />
+          <SidebarItem icon={Upload} label="Upload Invoice" onClick={() => onNavigate('vendor')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={CheckCircle} label="Verification Status" active isCollapsed={!isSidebarOpen} />
         </div>
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
-          <SidebarItem icon={Settings} label="Settings" />
-          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
+          <SidebarItem icon={Settings} label="Settings" isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} isCollapsed={!isSidebarOpen} />
         </div>
       </aside>
 
@@ -252,12 +267,12 @@ export default function VerificationStatus({ onNavigate }: { onNavigate: (page: 
                   <span className="text-[#10b981] text-[14px]">✓</span>
                 </div>
                 {statusOpen && (
-                  <div className="absolute top-full left-0 w-full mt-1 bg-white border border-[#e2e8f0] rounded-lg shadow-[0_8px_25px_rgba(71,85,105,0.15)] z-50 py-1">
+                  <div className="absolute top-full left-0 min-w-full w-max mt-1 bg-white border border-[#e2e8f0] rounded-lg shadow-[0_8px_25px_rgba(71,85,105,0.15)] z-50 py-1">
                     {uniqueStatuses.map(status => (
                       <div
                         key={status}
                         onClick={() => { setStatusFilter(status); setStatusOpen(false); setCurrentPage(1); }}
-                        className={`px-4 py-2.5 text-[13px] font-semibold cursor-pointer transition-colors ${statusFilter === status ? 'bg-[#f1f5f9] text-[#0f172a]' : 'text-[#475569] hover:bg-[#f8fafc]'}`}
+                        className={`px-4 py-2.5 text-[13px] font-semibold cursor-pointer transition-colors whitespace-nowrap ${statusFilter === status ? 'bg-[#f1f5f9] text-[#0f172a]' : 'text-[#475569] hover:bg-[#f8fafc]'}`}
                       >
                         {status}
                       </div>

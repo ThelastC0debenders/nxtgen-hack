@@ -1,6 +1,6 @@
 import {
   FileText, Settings, LogOut, Building2, BarChart3,
-  ClipboardCheck, CheckCircle2, AlertTriangle, Calendar, Hash
+  ClipboardCheck, CheckCircle2, AlertTriangle, Calendar, Hash, Menu
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -11,20 +11,22 @@ import api from './api/client';
 
 // --- Subcomponents ---
 
-const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, active = false, isCollapsed = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, isCollapsed?: boolean, onClick?: () => void }) => (
   <div
     onClick={onClick}
-    className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
+    title={isCollapsed ? label : undefined}
+    className={`flex items-center ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3.5 px-3 py-3'} mb-1 rounded-lg cursor-pointer transition-all duration-300 ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
     {!active && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>}
-    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10`} strokeWidth={active ? 2.5 : 2} />
-    <span className={`text-[14px] relative z-10 ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>
+    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10 shrink-0`} strokeWidth={active ? 2.5 : 2} />
+    {!isCollapsed && <span className={`text-[14px] relative z-10 truncate ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>}
   </div>
 );
 
 // --- Main Component ---
 
 export default function InvoiceVerification({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [invoiceId, setInvoiceId] = useState('');
   const [vendorId, setVendorId] = useState('');
   const [buyerId, setBuyerId] = useState('');
@@ -121,27 +123,40 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
 
       {/* Sidebar */}
-      <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
+      {/* Sidebar */}
+      {/* Sidebar */}
+      <aside className={`h-screen shrink-0 flex flex-col ${isSidebarOpen ? 'px-4 w-[260px]' : 'px-0 w-[80px]'} py-6 bg-[#1e293b] bg-[repeating-linear-gradient(-45deg,transparent,transparent_20px,rgba(255,255,255,0.04)_20px,rgba(255,255,255,0.04)_23px)] transition-all duration-300 ease-in-out`}>
+        
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className={`mb-4 flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center w-12 h-12 mx-auto'} text-[#94a3b8] hover:text-white transition-colors ${isSidebarOpen ? 'w-full' : ''} rounded-lg hover:bg-white/5 py-2 cursor-pointer`}
+          title="Toggle Sidebar"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Top Logo Area */}
-        <div className="flex items-center gap-3 mb-10 px-2 mt-2">
-          <div className="bg-[#f59e0b]/20 rounded-lg p-2.5 flex items-center justify-center">
+        <div className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 mb-10' : 'justify-center flex-col gap-2 mb-8'}`}>
+          <div className={`bg-[#f59e0b]/20 rounded-lg p-2.5 flex items-center justify-center shrink-0 ${!isSidebarOpen ? 'w-12 h-12' : ''}`}>
             <Building2 className="text-[#f59e0b]" size={24} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[14px] font-bold text-white leading-tight tracking-tight uppercase">Lender Portal</span>
-            <span className="text-[10px] font-semibold text-[#64748b] tracking-wider">Verification Node</span>
-          </div>
+          {isSidebarOpen && (
+            <div className="flex flex-col">
+              <span className="text-[14px] font-bold text-white leading-tight tracking-tight uppercase whitespace-nowrap">Lender Portal</span>
+              <span className="text-[10px] font-semibold text-[#64748b] tracking-wider whitespace-nowrap">Verification Node</span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-1 flex-1">
-          <SidebarItem icon={BarChart3} label="Verification Monitoring" onClick={() => onNavigate('lender')} />
-          <SidebarItem icon={ClipboardCheck} label="Invoice Verification" active />
-          <SidebarItem icon={FileText} label="Invoice History" onClick={() => onNavigate('lender/invoice-history')} />
+          <SidebarItem icon={BarChart3} label="Verification Monitoring" onClick={() => onNavigate('lender')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={ClipboardCheck} label="Invoice Verification" active isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={FileText} label="Invoice History" onClick={() => onNavigate('lender/invoice-history')} isCollapsed={!isSidebarOpen} />
         </div>
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
-          <SidebarItem icon={Settings} label="Settings" />
-          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
+          <SidebarItem icon={Settings} label="Settings" isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} isCollapsed={!isSidebarOpen} />
         </div>
       </aside>
 
@@ -154,12 +169,12 @@ export default function InvoiceVerification({ onNavigate }: { onNavigate: (page:
             <h1 className="text-[22px] font-bold text-[#0f172a] mb-1">Lender Invoice Verification Console</h1>
             <p className="text-[14px] font-semibold text-[#475569]">Real-time registry validation and duplicate detection.</p>
           </div>
-          <div className="flex items-center gap-3 bg-[#1e293b] px-4 py-2.5 rounded-lg">
+          <div className="flex items-center gap-3 bg-[#1e293b] px-4 py-2.5 rounded-lg border border-[#f59e0b]/20 shadow-sm">
             <div className="text-right">
-              <div className="text-[13px] font-bold text-white">Apex Capital Node</div>
-              <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Lender ID: LND-8821</div>
+              <div className="text-[13px] font-bold text-white tracking-wide">LENDER</div>
+              <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">LND-8821</div>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#f59e0b] to-[#fbbf24] shadow-sm"></div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f59e0b] to-[#fbbf24] shadow-[0_0_10px_rgba(245,158,11,0.2)] flex items-center justify-center text-white font-bold text-[15px]">L</div>
           </div>
         </header>
 

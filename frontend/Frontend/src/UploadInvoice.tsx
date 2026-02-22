@@ -1,27 +1,30 @@
 import {
   Upload, Settings, LogOut, Package, CheckCircle,
-  Hash, Building, Calendar, Play, FileUp
+  Hash, Building, Calendar, Play, FileUp, Info, Menu
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState, useRef } from 'react';
 import api from './api/client';
+import Modal from './components/Modal';
 
 // --- Subcomponents ---
 
-const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, active = false, isCollapsed = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, isCollapsed?: boolean, onClick?: () => void }) => (
   <div
     onClick={onClick}
-    className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
+    title={isCollapsed ? label : undefined}
+    className={`flex items-center ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3.5 px-3 py-3'} mb-1 rounded-lg cursor-pointer transition-all duration-300 ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
     {!active && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>}
-    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10`} strokeWidth={active ? 2.5 : 2} />
-    <span className={`text-[14px] relative z-10 ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>
+    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10 shrink-0`} strokeWidth={active ? 2.5 : 2} />
+    {!isCollapsed && <span className={`text-[14px] relative z-10 truncate ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>}
   </div>
 );
 
 // --- Main Component ---
 
 export default function UploadInvoice({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [invoiceId, setInvoiceId] = useState('');
   const [buyerId, setBuyerId] = useState('3a2d9faf-ecda-4b71-9b25-5a314263ef84');
   const [irnValue, setIrnValue] = useState('');
@@ -32,6 +35,17 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, icon?: React.ReactNode}>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
+  const showModal = (title: string, message: string, icon: React.ReactNode = <Info size={24} className="text-[#3b82f6]" />) => {
+    setModalConfig({ isOpen: true, title, message, icon });
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -83,6 +97,11 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
 
       await api.post('/invoices/upload', payload);
       setSubmitted(true);
+      showModal(
+        'Invoice Submitted', 
+        `Invoice ${invoiceId} has been successfully registered on the immutable ledger.`,
+        <CheckCircle size={24} className="text-[#10b981]" />
+      );
     } catch (error: any) {
       console.error('Upload failed:', error);
       setErrorMsg(error.response?.data?.error || 'Failed to upload invoice');
@@ -106,26 +125,39 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
 
       {/* Sidebar */}
-      <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
+      {/* Sidebar */}
+      {/* Sidebar */}
+      <aside className={`h-screen shrink-0 flex flex-col ${isSidebarOpen ? 'px-4 w-[260px]' : 'px-0 w-[80px]'} py-6 bg-[#1e293b] bg-[repeating-linear-gradient(-45deg,transparent,transparent_20px,rgba(255,255,255,0.04)_20px,rgba(255,255,255,0.04)_23px)] transition-all duration-300 ease-in-out`}>
+        
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className={`mb-4 flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center w-12 h-12 mx-auto'} text-[#94a3b8] hover:text-white transition-colors ${isSidebarOpen ? 'w-full' : ''} rounded-lg hover:bg-white/5 py-2 cursor-pointer`}
+          title="Toggle Sidebar"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Top Logo Area */}
-        <div className="flex items-center gap-3 mb-10 px-2 mt-2">
-          <div className="bg-white/10 rounded-lg p-2.5 flex items-center justify-center">
+        <div className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 mb-10' : 'justify-center flex-col gap-2 mb-8'}`}>
+          <div className={`bg-white/10 rounded-lg p-2.5 flex items-center justify-center shrink-0 ${!isSidebarOpen ? 'w-12 h-12' : ''}`}>
             <Package className="text-white" size={24} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[14px] font-bold text-white leading-tight tracking-tight uppercase">Vendor Portal</span>
-            <span className="text-[10px] font-semibold text-[#64748b] tracking-wider">Upload Node</span>
-          </div>
+          {isSidebarOpen && (
+            <div className="flex flex-col">
+              <span className="text-[14px] font-bold text-white leading-tight tracking-tight uppercase whitespace-nowrap">Vendor Portal</span>
+              <span className="text-[10px] font-semibold text-[#64748b] tracking-wider whitespace-nowrap">Upload Node</span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-1 flex-1">
-          <SidebarItem icon={Upload} label="Upload Invoice" active />
-          <SidebarItem icon={CheckCircle} label="Verification Status" onClick={() => onNavigate('vendor/verification-status')} />
+          <SidebarItem icon={Upload} label="Upload Invoice" active isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={CheckCircle} label="Verification Status" onClick={() => onNavigate('vendor/verification-status')} isCollapsed={!isSidebarOpen} />
         </div>
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
-          <SidebarItem icon={Settings} label="Settings" />
-          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} />
+          <SidebarItem icon={Settings} label="Settings" onClick={() => showModal('Settings', 'Vendor settings panel will be available in the next platform update.')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate?.('')} isCollapsed={!isSidebarOpen} />
         </div>
       </aside>
 
@@ -230,9 +262,9 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-[#0f172a] uppercase tracking-[0.15em] mb-2.5 block">Invoice Amount ($)</label>
+              <label className="text-[10px] font-bold text-[#0f172a] uppercase tracking-[0.15em] mb-2.5 block">Invoice Amount (₹)</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94a3b8] font-bold text-[13px]">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94a3b8] font-bold text-[13px]">₹</span>
                 <input
                   type="number"
                   placeholder="e.g. 5000"
@@ -312,10 +344,18 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
 
           {/* Compliance Notice */}
           <p className="text-[11px] font-semibold text-[#94a3b8] text-center">
-            By submitting, you certify that this invoice data is accurate and complies with the <span className="underline cursor-pointer">Network Standards</span>.
+            By submitting, you certify that this invoice data is accurate and complies with the <span className="underline cursor-pointer" onClick={() => showModal('Network Standards', 'All invoices undergo real-time cryptographic hashing and matching against the global registry to prevent duplication.')}>Network Standards</span>.
           </p>
         </div>
       </main>
+
+      <Modal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        icon={modalConfig.icon}
+      />
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import {
   LayoutGrid, FileText, ShieldAlert,
-  Store, Building2, Gauge, ChevronDown, Filter, Download, Settings, LogOut
+  Store, Building2, Gauge, ChevronDown, Filter, Download, Settings, LogOut, Menu
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, ResponsiveContainer
 } from 'recharts';
 import { useState, useEffect } from 'react';
+import Modal from './components/Modal';
 
 // --- Components ---
 
@@ -33,14 +34,15 @@ const CountUp = ({ end, duration = 2000, decimals = 0 }: { end: number, duration
   return <span>{count.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>;
 };
 
-const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, onClick?: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, active = false, isCollapsed = false, onClick }: { icon: LucideIcon, label: string, active?: boolean, isCollapsed?: boolean, onClick?: () => void }) => (
   <div
     onClick={onClick}
-    className={`flex items-center gap-3.5 px-3 py-3 mb-1 rounded-lg cursor-pointer transition-all ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
+    title={isCollapsed ? label : undefined}
+    className={`flex items-center ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3.5 px-3 py-3'} mb-1 rounded-lg cursor-pointer transition-all duration-300 ${active ? 'bg-white/10' : 'hover:bg-white/5 relative overflow-hidden group'}`}
   >
     {!active && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>}
-    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10`} strokeWidth={active ? 2.5 : 2} />
-    <span className={`text-[14px] relative z-10 ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>
+    <Icon size={18} className={`${active ? 'text-white' : 'text-[#94a3b8]'} relative z-10 shrink-0`} strokeWidth={active ? 2.5 : 2} />
+    {!isCollapsed && <span className={`text-[14px] relative z-10 truncate ${active ? 'text-white font-bold' : 'text-[#94a3b8] font-semibold'}`}>{label}</span>}
   </div>
 );
 
@@ -65,12 +67,22 @@ import api from './api/client';
 // Dynamic risk rules will populate here
 
 export default function FraudInsights({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [entityFilter, setEntityFilter] = useState('');
   const [showEntityFilter, setShowEntityFilter] = useState(false);
   const [highRiskEntities, setHighRiskEntities] = useState<any[]>([]);
   const [distData, setDistData] = useState<any[]>([]);
   const [stats, setStats] = useState({ highVelocityVendors: 0, multiLenderAttempts: 0, avgScore: 0 });
   const [riskRules, setRiskRules] = useState<{ title: string, severity: string, count: number }[]>([]);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, icon?: React.ReactNode}>({
+    isOpen: false, title: '', message: ''
+  });
+
+  const showModal = (title: string, message: string, icon: React.ReactNode = <ShieldAlert size={24} className="text-[#3b82f6]" />) => {
+    setModalConfig({ isOpen: true, title, message, icon });
+  };
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -207,26 +219,37 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
     <div className="flex h-screen w-full bg-[#f8fafc] text-[#0f172a] overflow-hidden">
 
       {/* Sidebar - Consistent with other pages */}
-      <aside className="w-[230px] h-screen shrink-0 flex flex-col px-4 py-6 bg-[#1e293b]">
+      <aside className={`h-screen shrink-0 flex flex-col ${isSidebarOpen ? 'px-4 w-[260px]' : 'px-0 w-[80px]'} py-6 bg-[#1e293b] bg-[repeating-linear-gradient(-45deg,transparent,transparent_20px,rgba(255,255,255,0.04)_20px,rgba(255,255,255,0.04)_23px)] transition-all duration-300 ease-in-out`}>
+        
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className={`mb-4 flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center w-12 h-12 mx-auto'} text-[#94a3b8] hover:text-white transition-colors ${isSidebarOpen ? 'w-full' : ''} rounded-lg hover:bg-white/5 py-2 cursor-pointer`}
+          title="Toggle Sidebar"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Top Logo Area */}
-        <div className="flex items-center gap-3 mb-10 px-2 mt-2">
-          <div className="bg-white/10 rounded-lg p-2.5 flex items-center justify-center">
+        <div className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 mb-10' : 'justify-center flex-col gap-2 mb-8'}`}>
+          <div className={`bg-white/10 rounded-lg p-2.5 flex items-center justify-center shrink-0 ${!isSidebarOpen ? 'w-12 h-12' : ''}`}>
             <LayoutGrid className="text-white" size={24} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[18px] font-bold text-white leading-tight tracking-tight">Admin</span>
-          </div>
+          {isSidebarOpen && (
+            <div className="flex flex-col">
+              <span className="text-[18px] font-bold text-white leading-tight tracking-tight whitespace-nowrap">Admin</span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-1 flex-1">
-          <SidebarItem icon={LayoutGrid} label="Risk Overview" onClick={() => onNavigate('admin')} />
-          <SidebarItem icon={FileText} label="Audit Trails" onClick={() => onNavigate('admin/audit-trail')} />
-          <SidebarItem icon={ShieldAlert} label="Fraud Insights" active />
+          <SidebarItem icon={LayoutGrid} label="Risk Overview" onClick={() => onNavigate('admin')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={FileText} label="Audit Trails" onClick={() => onNavigate('admin/audit-trail')} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={ShieldAlert} label="Fraud Insights" active isCollapsed={!isSidebarOpen} />
         </div>
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
-          <SidebarItem icon={Settings} label="Preferences" />
-          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate('')} />
+          <SidebarItem icon={Settings} label="Preferences" onClick={() => showModal('Preferences', 'Global admin preferences will be unlocked in v1.1.', <Settings size={24} className="text-[#3b82f6]" />)} isCollapsed={!isSidebarOpen} />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate('')} isCollapsed={!isSidebarOpen} />
         </div>
       </aside>
 
@@ -291,7 +314,12 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
           <div className="w-[320px] shrink-0">
             <div className="flex justify-between items-end mb-4 px-1">
               <h3 className="text-[14px] font-bold text-[#0f172a] uppercase tracking-widest">Triggered Risk Rules</h3>
-              <span className="text-[14px] font-bold text-[#475569] hover:text-[#0f172a] cursor-pointer transition-colors">See All</span>
+              <span 
+                className="text-[14px] font-bold text-[#475569] hover:text-[#0f172a] cursor-pointer transition-colors"
+                onClick={() => showModal('Risk Rules Registry', 'Full access to all 142 AI-driven dynamic risk parameters requires Level 3 Admin Clearance.', <FileText size={24} className="text-[#10b981]" />)}
+              >
+                See All
+              </span>
             </div>
 
             <div className="flex flex-col gap-3">
@@ -377,7 +405,10 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
                     </div>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <button className="text-[14px] font-bold tracking-widest text-[#0f172a] hover:text-[#475569] transition-colors uppercase cursor-pointer bg-transparent border-none">
+                    <button 
+                      className="text-[14px] font-bold tracking-widest text-[#0f172a] hover:text-[#475569] transition-colors uppercase cursor-pointer bg-transparent border-none"
+                      onClick={() => showModal('Deep Audit Initiated', `Cross-referencing entity ${entity.id} against global intelligence network... Expected completion: 45s.`, <ShieldAlert size={24} className="text-[#f59e0b]" />)}
+                    >
                       AUDIT
                     </button>
                   </td>
@@ -395,6 +426,14 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
         </div>
 
       </main>
+
+      <Modal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        icon={modalConfig.icon}
+      />
     </div>
   );
 }
