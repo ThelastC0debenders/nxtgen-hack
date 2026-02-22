@@ -31,7 +31,7 @@ const getStatusBadge = (status: string) => {
     REJECTED_HIGH_RISK: 'text-white bg-[#ef4444] px-3 py-1 rounded',
     REJECTED_INVALID_IRN: 'text-white bg-[#ef4444] px-3 py-1 rounded',
     REJECTED_BY_LENDER: 'text-[#ef4444] bg-[#ef4444]/10 px-3 py-1 rounded border border-[#ef4444]/20',
-    PENDING_VERIFICATION: 'text-white bg-[#f59e0b] px-3 py-1 rounded',
+    CLOSED: 'text-[#94a3b8] bg-[#94a3b8]/10 px-3 py-1 rounded border border-[#94a3b8]/20',
     PENDING: 'text-white bg-[#f59e0b] px-3 py-1 rounded',
   };
   const finalStyle = styles[status] || 'text-[#475569] bg-[#e2e8f0] px-3 py-1 rounded';
@@ -69,10 +69,11 @@ export default function LenderDashboard({ onNavigate }: { onNavigate: (page: str
           const dt = new Date(inv.created_at);
           if (dt.toDateString() === todayStr) todayCount++;
 
-          if (inv.status === 'VERIFIED') authCount++;
+          if (inv.status === 'VERIFIED' || inv.status === 'FINANCED') authCount++;
           else if (inv.status === 'DUPLICATE_DETECTED' || inv.status.startsWith('REJECTED_')) rejCount++;
 
-          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          const rawScore = inv.fraud_score;
+          const score = rawScore != null ? parseFloat(rawScore) : 0;
           if (score > 75) riskCount++;
 
           return {

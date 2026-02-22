@@ -24,7 +24,7 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: Luc
 );
 
 const getStatusBadge = (status: string) => {
-  const isVerified = status === 'VERIFIED';
+  const isVerified = status === 'VERIFIED' || status === 'FINANCED';
   const isPending = status === 'PENDING_VERIFICATION' || status === 'PENDING';
   const isConflict = status === 'DUPLICATE_DETECTED' || status.startsWith('REJECTED_');
 
@@ -56,7 +56,7 @@ export default function InvoiceHistory({ onNavigate }: { onNavigate: (page: stri
   const ITEMS_PER_PAGE = 10;
   const statusRef = useRef<HTMLDivElement>(null);
 
-  const uniqueStatuses = ['All Statuses', 'VERIFIED', 'PENDING_VERIFICATION', 'DUPLICATE_DETECTED', 'REJECTED_HIGH_RISK'];
+  const uniqueStatuses = ['All Statuses', 'VERIFIED', 'FINANCED', 'PENDING_VERIFICATION', 'DUPLICATE_DETECTED', 'REJECTED_HIGH_RISK', 'REJECTED_BY_LENDER'];
 
   const fetchHistory = async () => {
     setRefreshing(true);
@@ -68,7 +68,7 @@ export default function InvoiceHistory({ onNavigate }: { onNavigate: (page: stri
         vendor: inv.sellerGSTIN, // Using seller as vendor ID proxy
         amount: Number(inv.invoiceAmount),
         status: inv.status,
-        score: typeof inv.fraud_score === 'number' ? inv.fraud_score.toFixed(2) : '0.00',
+        score: inv.fraud_score != null ? parseFloat(inv.fraud_score).toFixed(2) : '0.00',
         timestamp: new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       }));
       setHistoryData(mapped);

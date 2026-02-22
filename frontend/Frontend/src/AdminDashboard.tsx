@@ -84,16 +84,9 @@ const getStatusBadge = (status: string, type: string) => {
 const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [registryLogs, setRegistryLogs] = useState<any[]>([]);
-  const [stats, setStats] = useState({ verified: 0, duplicates: 0, latency: 143, highRiskVendors: 0 });
+  const [stats, setStats] = useState({ verified: 0, duplicates: 0, latency: 143, highRiskVendors: 0, fraudScoreIndex: '0.0', anomalyClusters: '00' });
 
-  // Use static radar/bar for the UI visualization aspects unless we build a dedicated metrics API
-  const radarData = [
-    { subject: 'IDENTITY', A: 80, B: 100, fullMark: 100 },
-    { subject: 'HISTORY', A: 90, B: 100, fullMark: 100 },
-    { subject: 'VELOCITY', A: 60, B: 100, fullMark: 100 },
-    { subject: 'VOLUME', A: 85, B: 100, fullMark: 100 },
-    { subject: 'NETWORK', A: 70, B: 100, fullMark: 100 },
-  ];
+  const [radarData, setRadarData] = useState<any[]>([]);
 
   const barData = [
     { name: 'MON', value: 30, color: '#f1f5f9' },
@@ -113,17 +106,49 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
 
         let verifiedCount = 0;
         let duplicateCount = 0;
+        let totalScore = 0;
         const vendorRiskMap = new Map<string, number>();
+
+        let totalIdentity = 0, totalNetwork = 0, totalHistory = 0, totalVolume = 0, totalVelocity = 0;
 
         const logs = items.map((inv: any) => {
           const dt = new Date(inv.created_at);
-          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          const rawScore = inv.fraud_score;
+          const score = rawScore != null ? parseFloat(rawScore) : 0;
+          totalScore += score;
 
-          if (inv.status === 'VERIFIED') verifiedCount++;
+          if (inv.status === 'VERIFIED' || inv.status === 'FINANCED') verifiedCount++;
           if (inv.status === 'DUPLICATE_DETECTED') duplicateCount++;
 
           const existingMax = vendorRiskMap.get(inv.sellerGSTIN) || 0;
           vendorRiskMap.set(inv.sellerGSTIN, Math.max(existingMax, score));
+
+          // Radar Processing
+          let rulesFromAI: string[] = [];
+          try {
+            if (typeof inv.metadata === 'string') {
+              rulesFromAI = JSON.parse(inv.metadata).triggered_rules || [];
+            } else if (inv.metadata?.triggered_rules) {
+              rulesFromAI = inv.metadata.triggered_rules;
+            }
+          } catch (e) { }
+
+          let itemIdentity = 20, itemNetwork = 20, itemHistory = 20, itemVolume = 20, itemVelocity = 20;
+          rulesFromAI.forEach(rule => {
+            const r = rule.toUpperCase();
+            if (r.includes('GSTIN') || r.includes('IDENTITY') || r.includes('INVALID')) itemIdentity += 40;
+            if (r.includes('DUPLICATE') || r.includes('LENDER')) itemNetwork += 50;
+            if (r.includes('HISTORY') || r.includes('REJECT')) itemHistory += 45;
+            if (r.includes('AMOUNT') || r.includes('VOLUME') || r.includes('ROUND')) itemVolume += 40;
+            if (r.includes('VELOCITY') || r.includes('FREQUENCY') || r.includes('TIME')) itemVelocity += 50;
+          });
+
+          const factor = score > 20 ? 1.2 : 1;
+          totalIdentity += Math.min(100, itemIdentity * factor);
+          totalNetwork += Math.min(100, itemNetwork * factor);
+          totalHistory += Math.min(100, itemHistory * factor);
+          totalVolume += Math.min(100, itemVolume * factor);
+          totalVelocity += Math.min(100, itemVelocity * factor);
 
           let type = 'success';
           let displayStatus = 'LOGGED';
@@ -151,7 +176,26 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
           if (maxScore > 75) highRiskVendorsCount++;
         });
 
-        setStats(prev => ({ ...prev, verified: verifiedCount, duplicates: duplicateCount, highRiskVendors: highRiskVendorsCount }));
+        const count = items.length || 1;
+        setRadarData([
+          { subject: 'IDENTITY', value: Math.round(totalIdentity / count), fullMark: 100 },
+          { subject: 'NETWORK', value: Math.round(totalNetwork / count), fullMark: 100 },
+          { subject: 'HISTORY', value: Math.round(totalHistory / count), fullMark: 100 },
+          { subject: 'VOLUME', value: Math.round(totalVolume / count), fullMark: 100 },
+          { subject: 'VELOCITY', value: Math.round(totalVelocity / count), fullMark: 100 },
+        ]);
+
+        const avgFraudScore = items.length > 0 ? (totalScore / items.length).toFixed(1) : '0.0';
+        const anomalyClustersCount = String(highRiskVendorsCount).padStart(2, '0');
+
+        setStats(prev => ({ 
+          ...prev, 
+          verified: verifiedCount, 
+          duplicates: duplicateCount, 
+          highRiskVendors: highRiskVendorsCount,
+          fraudScoreIndex: avgFraudScore,
+          anomalyClusters: anomalyClustersCount
+        }));
         setRegistryLogs(logs);
       } catch (err) {
         console.error("Failed to fetch admin data", err);
@@ -291,34 +335,38 @@ const AdminDashboard = ({ onNavigate }: { onNavigate?: (path: string) => void })
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                       <PolarGrid stroke="#e2e8f0" strokeWidth={1} />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 10, fontWeight: 600 }} />
-                      <Radar name="Current" dataKey="A" stroke="#e2e8f0" fill="#e2e8f0" fillOpacity={0.6} />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} />
+                      <Radar name="Current" dataKey="value" stroke="#64748b" fill="#e2e8f0" fillOpacity={0.6} strokeWidth={2} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Right Side Stats */}
                 <div className="flex-1 flex flex-col gap-5 max-w-[320px]">
-                  <div className="bg-[#f8fafc] rounded-lg p-5 border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)]">
-                    <div className="flex justify-between items-end mb-2">
-                      <div className="text-[14px] font-bold text-[#0f172a]">Fraud Score Index</div>
-                      <div className="text-[24px] font-bold text-[#0f172a] leading-none">72.4</div>
+                  <div className="bg-[#f8fafc] rounded-xl p-6 border border-[#e2e8f0]">
+                    <div className="flex justify-between items-end mb-4">
+                      <div className="text-[16px] font-bold text-[#0f172a]">Fraud Score Index</div>
+                      <div className="text-[32px] font-bold text-[#0f172a] tracking-tight leading-none">{stats.fraudScoreIndex}</div>
                     </div>
-                    <div className="w-full bg-[#e2e8f0] h-1.5 rounded-full mb-3 overflow-hidden">
-                      <div className="bg-[#1e293b] h-full w-[72%] rounded-full"></div>
+                    <div className="w-full bg-[#e2e8f0] h-2.5 rounded-full mb-5 overflow-hidden">
+                      <div className="bg-[#1e293b] h-full rounded-full" style={{ width: `${Math.min(100, parseFloat(stats.fraudScoreIndex))}%` }}></div>
                     </div>
-                    <div className="text-[14px] italic text-[#475569]">Moderately high velocity detected in secondary markets.</div>
+                    <div className="text-[15px] font-medium text-[#475569] leading-relaxed">
+                      Moderately high velocity detected in secondary markets.
+                    </div>
                   </div>
 
-                  <div className="bg-[#f8fafc] rounded-lg p-5 border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)]">
-                    <div className="flex justify-between items-end mb-2">
-                      <div className="text-[14px] font-bold text-[#0f172a]">Anomalous Clusters</div>
-                      <div className="text-[24px] font-bold text-[#0f172a] leading-none">04</div>
+                  <div className="bg-[#f8fafc] rounded-xl p-6 border border-[#e2e8f0]">
+                    <div className="flex justify-between items-end mb-4">
+                      <div className="text-[16px] font-bold text-[#0f172a]">Anomalous Clusters</div>
+                      <div className="text-[32px] font-bold text-[#0f172a] tracking-tight leading-none">{stats.anomalyClusters}</div>
                     </div>
-                    <div className="w-full bg-[#e2e8f0] h-1.5 rounded-full mb-3 overflow-hidden">
-                      <div className="bg-[#1e293b] h-full w-[40%] rounded-full"></div>
+                    <div className="w-full bg-[#e2e8f0] h-2.5 rounded-full mb-5 overflow-hidden">
+                      <div className="bg-[#1e293b] h-full rounded-full" style={{ width: `${Math.min(100, parseInt(stats.anomalyClusters) * 10)}%` }}></div>
                     </div>
-                    <div className="text-[14px] italic text-[#475569]">Concentrated activities found in region AF-9.</div>
+                    <div className="text-[15px] font-medium text-[#475569] leading-relaxed">
+                      Concentrated activities found in region AF-9.
+                    </div>
                   </div>
                 </div>
               </div>

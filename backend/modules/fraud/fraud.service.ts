@@ -6,7 +6,7 @@ export class FraudService {
      * Wrapper around aiClient.scoreInvoice().
      * Adds fallback logic (if AI down) with default score = 0.
      */
-    static async getFraudScore(invoiceData: any): Promise<{ score: number; riskLevel: string }> {
+    static async getFraudScore(invoiceData: any): Promise<{ score: number; riskLevel: string; triggeredRules?: string[] }> {
         logger.info('Requesting fraud score for invoice', { invoiceId: invoiceData.invoiceNumber });
 
         // Map invoiceData to FastAPI schema
@@ -38,7 +38,8 @@ export class FraudService {
         if (aiResult !== null) {
             return {
                 score: Math.round(aiResult.fraud_score * 100), // Scale 0.0-1.0 to 0-100
-                riskLevel: aiResult.risk_level
+                riskLevel: aiResult.risk_level,
+                triggeredRules: aiResult.triggered_rules || []
             };
         }
 
@@ -46,7 +47,8 @@ export class FraudService {
         logger.warn('AI Service failed, applying fallback fraud score of 0 for invoice', { invoiceId: invoiceData.invoiceNumber });
         return {
             score: 0,
-            riskLevel: 'UNKNOWN (AI OFFLINE)'
+            riskLevel: 'UNKNOWN (AI OFFLINE)',
+            triggeredRules: []
         };
     }
 }

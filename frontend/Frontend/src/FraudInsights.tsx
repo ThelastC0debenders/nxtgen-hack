@@ -62,13 +62,7 @@ import api from './api/client';
 
 // --- Empty initially, will be fetched ---
 
-
-const riskRules = [
-  { title: 'High Velocity Submission', severity: 'CRITICAL' },
-  { title: 'Multi-Lender Attempt', severity: 'CRITICAL' },
-  { title: 'Round Amount Pattern', severity: 'ELEVATED' },
-  { title: 'Near Duplicate Detected', severity: 'ELEVATED' },
-];
+// Dynamic risk rules will populate here
 
 export default function FraudInsights({ onNavigate }: { onNavigate: (page: string) => void }) {
   const [entityFilter, setEntityFilter] = useState('');
@@ -76,6 +70,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
   const [highRiskEntities, setHighRiskEntities] = useState<any[]>([]);
   const [distData, setDistData] = useState<any[]>([]);
   const [stats, setStats] = useState({ highVelocityVendors: 0, multiLenderAttempts: 0, avgScore: 0 });
+  const [riskRules, setRiskRules] = useState<{ title: string, severity: string, count: number }[]>([]);
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -91,11 +86,28 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
         const dayBuckets: Record<string, { LOW: number, MEDIUM: number, HIGH: number }> = {};
         days.forEach(d => dayBuckets[d] = { LOW: 0, MEDIUM: 0, HIGH: 0 });
 
+        const triggeredRulesMap = new Map<string, number>();
+
         items.forEach((inv: any) => {
-          const score = typeof inv.fraud_score === 'number' ? inv.fraud_score : 0;
+          const rawScore = inv.fraud_score;
+          const score = rawScore != null ? parseFloat(rawScore) : 0;
           totalScore += score;
 
           if (inv.status === 'DUPLICATE_DETECTED') duplicateCount++;
+
+          // Extract Triggered AI Rules from metadata
+          let rulesFromAI: string[] = [];
+          try {
+            if (typeof inv.metadata === 'string') {
+              rulesFromAI = JSON.parse(inv.metadata).triggered_rules || [];
+            } else if (inv.metadata?.triggered_rules) {
+              rulesFromAI = inv.metadata.triggered_rules;
+            }
+          } catch (e) { }
+
+          rulesFromAI.forEach(r => {
+            triggeredRulesMap.set(r, (triggeredRulesMap.get(r) || 0) + 1);
+          });
 
           // Day Distribution
           const dt = new Date(inv.created_at);
@@ -147,6 +159,25 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
           avgScore: items.length > 0 ? totalScore / items.length : 0
         });
 
+        // Map the collected Map back into the state array
+        const dynamicRules = Array.from(triggeredRulesMap.entries()).map(([r, count]) => ({
+          title: r.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()),
+          severity: (r.includes('REJECTION') || r.includes('DUPLICATE') || r.includes('HIGH') || r.includes('CRITICAL')) ? 'CRITICAL' : 'ELEVATED',
+          count: count
+        }));
+
+        if (dynamicRules.length === 0) {
+          // Keep a few placeholder visual defaults if history has no rules triggered yet
+          dynamicRules.push(
+            { title: 'High Velocity Submission', severity: 'CRITICAL', count: 0 },
+            { title: 'Multi-Lender Attempt', severity: 'CRITICAL', count: 0 },
+            { title: 'Round Amount Pattern', severity: 'ELEVATED', count: 0 },
+            { title: 'Near Duplicate Detected', severity: 'ELEVATED', count: 0 }
+          );
+        }
+
+        setRiskRules(dynamicRules);
+
       } catch (err) {
         console.error("Failed to fetch fraud insights:", err);
       }
@@ -195,7 +226,7 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
 
         <div className="flex flex-col gap-1 pt-4 mt-auto border-t border-[#334155]">
           <SidebarItem icon={Settings} label="Preferences" />
-          <SidebarItem icon={LogOut} label="Logout" />
+          <SidebarItem icon={LogOut} label="Sign Out" onClick={() => onNavigate('')} />
         </div>
       </aside>
 
@@ -268,8 +299,15 @@ export default function FraudInsights({ onNavigate }: { onNavigate: (page: strin
                 <div key={idx} className="bg-white rounded-xl border border-[#e2e8f0] shadow-[0_4px_15px_rgba(71,85,105,0.06)] p-4 flex justify-between items-center cursor-pointer hover:border-[#cbd5e1] transition-colors">
                   <div>
                     <div className="text-[14px] font-bold text-[#0f172a] mb-1.5">{rule.title}</div>
-                    <div className="inline-block bg-[#f1f5f9] px-2 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase text-[#475569]">
-                      {rule.severity}
+                    <div className="flex items-center gap-2">
+                      <div className="inline-block bg-[#f1f5f9] px-2 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase text-[#475569]">
+                        {rule.severity}
+                      </div>
+                      {rule.count > 0 && (
+                        <div className="inline-block bg-[#e0e7ff] text-[#4338ca] px-2 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase">
+                          {rule.count} trigger{rule.count !== 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <ChevronDown size={16} className="text-[#64748b]" />

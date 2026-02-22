@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { InvoiceService } from './invoice.service';
 import { RedisLock } from '../verification/redisLock';
+import { FraudService } from '../fraud/fraud.service';
 import logger from '../../infrastructure/logger/logger';
 
 export class InvoiceController {
@@ -40,7 +41,8 @@ export class InvoiceController {
             const invoiceRecordData = {
                 ...payload,
                 status: verificationResult.status,
-                fraud_score: verificationResult.fraudScore
+                fraud_score: verificationResult.fraudScore,
+                metadata: { triggered_rules: verificationResult.triggeredRules || [] }
             };
 
             await InvoiceService.saveInvoiceRecord(invoiceRecordData);
@@ -100,9 +102,14 @@ export class InvoiceController {
                 return;
             }
 
+            // Evaluate the fraud score using AI before saving
+            const fraudResult = await FraudService.getFraudScore(payload);
+
             const newInvoice = {
                 ...payload,
-                status: 'PENDING_VERIFICATION'
+                status: 'PENDING_VERIFICATION',
+                fraud_score: fraudResult.score,
+                metadata: { triggered_rules: fraudResult.triggeredRules || [] }
             };
 
             // 3. Save

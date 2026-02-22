@@ -64,17 +64,20 @@ export default function UploadInvoice({ onNavigate }: { onNavigate: (page: strin
     setErrorMsg('');
 
     try {
+      const isRound = Math.random() > 0.5;
+      const mockAmount = isRound ? Math.floor(Math.random() * 50 + 1) * 1000 : Math.floor(Math.random() * 50000) + 1500;
+
       // Create a payload matching the backend expectations
       const payload = {
         invoiceNumber: invoiceId,
         buyerGSTIN: buyerId,
         sellerGSTIN: localStorage.getItem('userId') || 'VND-9904', // Using real auth context instead of hardcoding
-        invoiceAmount: 10000, // Mock amount since we replaced the field with IRN
+        invoiceAmount: mockAmount, // Dynamic mock amount to vary AI scoring
         invoiceDate: issueDate || new Date().toISOString(),
         irn: irnValue, // Now utilizing the user input field
         irnStatus: 'VALID',
         lineItems: [
-          { description: 'Consulting Services', quantity: 1, unitPrice: 10000 }
+          { description: 'Consulting Services', quantity: 1, unitPrice: mockAmount }
         ]
       };
 
