@@ -13,21 +13,26 @@ function App() {
 
   useEffect(() => {
     const files = [
-      '/index.md',
-      '/architecture.md',
-      '/backend.md',
-      '/api-reference.md',
-      '/deployment.md'
+      'index.md',
+      'architecture.md',
+      'backend.md',
+      'api-reference.md',
+      'deployment.md'
     ];
 
+    const basePath = import.meta.env.BASE_URL;
+
     Promise.all(
-      files.map(file => fetch(file).then(res => res.text()))
+      files.map(file => fetch(`${basePath}${file}`).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status} when fetching ${file}`);
+        return res.text();
+      }))
     )
-    .then(texts => {
-      // Concatenate all 5 files separated by a horizontal rule
-      setMarkdown(texts.join('\n\n---\n\n'));
-    })
-    .catch(console.error);
+      .then(texts => {
+        // Concatenate all 5 files separated by a horizontal rule
+        setMarkdown(texts.join('\n\n---\n\n'));
+      })
+      .catch(console.error);
   }, []);
 
   // Track active section via precise scroll position
@@ -39,7 +44,7 @@ function App() {
       if (headings.length === 0) return;
 
       let currentId = headings[0].getAttribute('id') || '';
-      
+
       // Find the last heading that is near or above the top of the viewport
       for (const h of headings) {
         const rect = h.getBoundingClientRect();
@@ -98,7 +103,7 @@ function App() {
     h4: ({ children }) => <h4>{children}</h4>,
     code: ({ className, children, node, ...props }) => {
       const match = /language-(\w+)/.exec(className || '');
-      
+
       // Check if this code is inside a <pre> (block-level code) 
       // by checking the parent node
       const isBlock = node?.position && String(children).includes('\n');

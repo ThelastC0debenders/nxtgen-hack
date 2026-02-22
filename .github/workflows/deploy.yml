@@ -12,9 +12,27 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./docs-site
+
+      - name: Build site
+        run: npm run build
+        working-directory: ./docs-site
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -22,7 +40,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs-site   
+          path: ./docs-site/dist
 
       - name: Deploy
+        id: deployment
         uses: actions/deploy-pages@v4
