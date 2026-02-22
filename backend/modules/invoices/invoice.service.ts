@@ -7,6 +7,19 @@ import crypto from 'crypto';
 
 export class InvoiceService {
     /**
+     * Mock GST Verification
+     * Simulates fetching data from the official GST portal to validate an IRN.
+     */
+    static mockGstVerification(irn: string): boolean {
+        // List of pre-approved valid IRNs for the hackathon demo
+        const validIrns = ['IRN-1001', 'IRN-1002', 'IRN-1003', 'IRN-VALID-123', 'TEST-IRN-999'];
+
+        // Log the simulation
+        logger.info(`[MOCK GST API] Verifying IRN: ${irn}`);
+        return validIrns.includes(irn.toUpperCase());
+    }
+
+    /**
      * Pure business logic coordinating the verification flow.
      */
     static async processVerification(payload: any, userRole: string) {
@@ -14,21 +27,36 @@ export class InvoiceService {
         logger.info('Starting invoice verification process', { invoiceNumber: payload.invoiceNumber });
 
         try {
-            // 1. Check for duplicates in the DB first
-            // We only consider it a duplicate if it's already been processed (not PENDING_VERIFICATION)
-            const duplicateCheck = await query(`SELECT id, status FROM invoices WHERE "invoiceNumber" = $1`, [payload.invoiceNumber]);
-
             let invoiceStatus = 'VERIFIED';
             let fraudScoreResult = { score: 0, riskLevel: 'LOW' };
 
-            if (duplicateCheck.rows.length > 0 && duplicateCheck.rows[0].status !== 'PENDING_VERIFICATION') {
-                invoiceStatus = 'DUPLICATE_DETECTED';
-                logger.warn('Duplicate invoice detected', { invoiceNumber: payload.invoiceNumber, existingStatus: duplicateCheck.rows[0].status });
+            // 1. Mock GST Portal Verification
+            const isGstValid = this.mockGstVerification(payload.irn);
+
+            if (!isGstValid) {
+                invoiceStatus = 'REJECTED_INVALID_IRN';
+                logger.warn('GST Verification Failed: Invalid IRN', { irn: payload.irn });
             } else {
-                // 2. If not duplicate or if it is just pending → call fraudService.getFraudScore()
-                fraudScoreResult = await FraudService.getFraudScore(payload);
-                if (fraudScoreResult.score > 75) {
-                    invoiceStatus = 'REJECTED'; // High fraud
+                // 2. Check for duplicates in the DB (by Invoice Number AND IRN)
+                // If it exists in the system and the status isn't just PENDING, it's a duplicate attempt
+                const duplicateCheck = await query(
+                    `SELECT id, status, "invoiceNumber", irn FROM invoices WHERE "invoiceNumber" = $1 OR irn = $2`,
+                    [payload.invoiceNumber, payload.irn]
+                );
+
+                if (duplicateCheck.rows.length > 0 && duplicateCheck.rows[0].status !== 'PENDING_VERIFICATION') {
+                    invoiceStatus = 'DUPLICATE_DETECTED';
+                    logger.warn('Duplicate invoice detected', {
+                        invoiceNumber: payload.invoiceNumber,
+                        irn: payload.irn,
+                        matchedRecord: duplicateCheck.rows[0].invoiceNumber
+                    });
+                } else {
+                    // 3. If valid GST and not duplicate, run AI Fraud Engine
+                    fraudScoreResult = await FraudService.getFraudScore(payload);
+                    if (fraudScoreResult.score > 75) {
+                        invoiceStatus = 'REJECTED'; // High fraud
+                    }
                 }
             }
 
@@ -61,10 +89,10 @@ export class InvoiceService {
     }
 
     /**
-     * Checks if an invoice exists by number
+     * Checks if an invoice exists by number or IRN
      */
-    static async getInvoiceByNumber(invoiceNumber: string) {
-        const result = await query(`SELECT id, status FROM invoices WHERE "invoiceNumber" = $1`, [invoiceNumber]);
+    static async getInvoiceByNumberOrIrn(invoiceNumber: string, irn: string) {
+        const result = await query(`SELECT id, status, "invoiceNumber", irn FROM invoices WHERE "invoiceNumber" = $1 OR irn = $2`, [invoiceNumber, irn]);
         return result.rows.length > 0 ? result.rows[0] : null;
     }
 
@@ -114,11 +142,7 @@ export class InvoiceService {
             }
 
             let result;
-            if (role === 'LENDER') {
-                result = await query(`SELECT * FROM invoices WHERE "buyerGSTIN" = $1 ORDER BY created_at DESC`, [userId]);
-            } else if (role === 'VENDOR') {
-                result = await query(`SELECT * FROM invoices WHERE "sellerGSTIN" = $1 ORDER BY created_at DESC`, [userId]);
-            } else if (role === 'ADMIN') {
+            if (role === 'LENDER' || role === 'VENDOR' || role === 'ADMIN') {
                 result = await query(`SELECT * FROM invoices ORDER BY created_at DESC`);
             } else {
                 return [];
@@ -143,7 +167,8 @@ export class InvoiceService {
     static async updateInvoiceStatus(invoiceNumber: string, status: string, userRole: string) {
         try {
             // First check if it exists
-            const existing = await this.getInvoiceByNumber(invoiceNumber);
+            const resultCheck = await query(`SELECT id, status FROM invoices WHERE "invoiceNumber" = $1`, [invoiceNumber]);
+            const existing = resultCheck.rows.length > 0 ? resultCheck.rows[0] : null;
             if (!existing) {
                 throw new Error('INVOICE_NOT_FOUND');
             }

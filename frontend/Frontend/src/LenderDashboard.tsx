@@ -29,6 +29,7 @@ const getStatusBadge = (status: string) => {
     FINANCED: 'text-[#3b82f6] bg-[#3b82f6]/10 px-3 py-1 rounded border border-[#3b82f6]/20',
     DUPLICATE_DETECTED: 'text-white bg-[#ef4444] px-3 py-1 rounded',
     REJECTED_HIGH_RISK: 'text-white bg-[#ef4444] px-3 py-1 rounded',
+    REJECTED_INVALID_IRN: 'text-white bg-[#ef4444] px-3 py-1 rounded',
     REJECTED_BY_LENDER: 'text-[#ef4444] bg-[#ef4444]/10 px-3 py-1 rounded border border-[#ef4444]/20',
     PENDING_VERIFICATION: 'text-white bg-[#f59e0b] px-3 py-1 rounded',
     PENDING: 'text-white bg-[#f59e0b] px-3 py-1 rounded',
