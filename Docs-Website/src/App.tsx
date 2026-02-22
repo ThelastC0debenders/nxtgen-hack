@@ -12,45 +12,51 @@ function App() {
   const [activeSection, setActiveSection] = useState('1-project-overview');
 
   useEffect(() => {
-    fetch('/src/content.md')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load');
-        return res.text();
-      })
-      .then(text => setMarkdown(text))
-      .catch(() => {
-        // Fallback: try the public path
-        fetch('/content.md')
-          .then(res => res.text())
-          .then(text => setMarkdown(text))
-          .catch(console.error);
-      });
+    const files = [
+      '/index.md',
+      '/architecture.md',
+      '/backend.md',
+      '/api-reference.md',
+      '/deployment.md'
+    ];
+
+    Promise.all(
+      files.map(file => fetch(file).then(res => res.text()))
+    )
+    .then(texts => {
+      // Concatenate all 5 files separated by a horizontal rule
+      setMarkdown(texts.join('\n\n---\n\n'));
+    })
+    .catch(console.error);
   }, []);
 
-  // Track active section via IntersectionObserver
+  // Track active section via precise scroll position
   useEffect(() => {
     if (!markdown) return;
 
-    const headings = document.querySelectorAll('.markdown-body h2[id]');
-    if (headings.length === 0) return;
+    const handleScroll = () => {
+      const headings = Array.from(document.querySelectorAll('.markdown-body h2[id]'));
+      if (headings.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter(e => e.isIntersecting);
-        if (visible.length > 0) {
-          // Pick the first visible one
-          const id = visible[0].target.getAttribute('id');
-          if (id) setActiveSection(id);
+      let currentId = headings[0].getAttribute('id') || '';
+      
+      // Find the last heading that is near or above the top of the viewport
+      for (const h of headings) {
+        const rect = h.getBoundingClientRect();
+        if (rect.top <= 150) {
+          currentId = h.getAttribute('id') || currentId;
+        } else {
+          break; // Stop looking once we find a heading further down
         }
-      },
-      {
-        rootMargin: '-80px 0px -60% 0px',
-        threshold: 0,
       }
-    );
+      setActiveSection(currentId);
+    };
 
-    headings.forEach(h => observer.observe(h));
-    return () => observer.disconnect();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Run once on load
+    setTimeout(handleScroll, 100);
+
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [markdown]);
 
   const handleSectionClick = useCallback((id: string) => {
@@ -74,8 +80,13 @@ function App() {
   // Custom components for react-markdown
   const components: Components = {
     h1: () => null, // We render the hero manually
-    h2: ({ children }) => {
-      const text = String(children);
+    h2: ({ node, children }) => {
+      const getText = (n: any): string => {
+        if (n?.type === 'text') return n.value || '';
+        if (n?.children) return n.children.map(getText).join('');
+        return '';
+      };
+      const text = getText(node);
       const id = slugify(text);
       return (
         <h2 id={id} className="section-anchor">
@@ -126,11 +137,9 @@ function App() {
     );
   }
 
-  // Strip the H1 and TOC from the top of the markdown for manual hero rendering
+  // Strip only the main H1 from the top for manual hero rendering
   const normalized = markdown.replace(/\r\n/g, '\n');
-  const contentWithoutHero = normalized
-    .replace(/^#\s+[^\n]*\n/, '')
-    .replace(/## Table of Contents\n[\s\S]*?\n---\n/, '\n---\n');
+  const contentWithoutHero = normalized.replace(/^#\s+[^\n]*\n/, '');
 
   return (
     <div className="app-layout">
