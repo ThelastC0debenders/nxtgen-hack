@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔐 NxtGen Hack
+# NxtGen Hack
 
 ### Real-Time Invoice Verification & Fraud Intelligence Platform
 
@@ -15,7 +15,7 @@
 
 **An API-first infrastructure platform that prevents duplicate invoice financing across banks and NBFCs using cryptographic hashing, AI-powered fraud detection, and an immutable cross-lender audit registry.**
 
-[📖 Full Documentation](./docs/index.md) · [🏗️ Architecture](./docs/architecture.md) · [📡 API Reference](./docs/api-reference.md) · [🚀 Deployment](./docs/deployment.md)
+[📖 Full Documentation](./docs/index.md) · [🏗️ Architecture](./docs/architecture.md) · [📡 API Reference](./docs/api-reference.md) · [� SDK Guide](./docs/sdk-guide.md)
 
 </div>
 
@@ -78,6 +78,32 @@ cd frontend/Frontend && npm install && npm run dev   # http://localhost:5173
 
 ---
 
+## 📦 SDK & Integration
+
+The easiest way to integrate NxtGen into your lending or vendor backend is via our API wrappers. We provide comprehensive documentation for both **Node.js** and **Python**.
+
+👉 **[Read the full SDK & Integration Guide](./docs/sdk-guide.md)**
+
+**Node.js Example (Axios):**
+```typescript
+import { NxtGenClient } from './sdk';
+
+const client = new NxtGenClient('https://api.nxtgen.xyz', 'lendor@gmail.com', 'securepass');
+
+async function approveCapital(invoice) {
+  const result = await client.verifyInvoice({
+    ...invoice,
+    buyerGSTIN: "33BBBB2222B1Z2" 
+  });
+
+  if (result.status === 'VERIFIED') {
+    console.log('Safe to proceed with loan!');
+  }
+}
+```
+
+---
+
 ## 🎭 Demo Credentials
 
 | Role | Email | Password |
@@ -112,9 +138,8 @@ nxtgen-hack/
 └── docs/                 Full documentation
     ├── index.md          Project overview & quick start
     ├── architecture.md   System design & request flows
-    ├── backend.md        Backend & AI service deep dive
-    ├── api-reference.md  All endpoints, request/response examples
-    └── deployment.md     RBAC, security, env vars, testing, roadmap
+    ├── sdk-guide.md      Node.js & Python SDK wrappers
+    └── api-reference.md  All endpoints, request/response examples
 ```
 
 ---
@@ -137,9 +162,8 @@ PENDING_VERIFICATION  →  VERIFIED  →  FINANCED
 |---|---|
 | [index.md](./docs/index.md) | Project overview, problem, capabilities, demo creds |
 | [architecture.md](./docs/architecture.md) | System diagram, all request flows, repo tree |
-| [backend.md](./docs/backend.md) | Node.js modules + AI service (ML, rules, features) |
+| [sdk-guide.md](./docs/sdk-guide.md) | Node.js and Python SDK wrappers & Integration |
 | [api-reference.md](./docs/api-reference.md) | Every endpoint with examples and error codes |
-| [deployment.md](./docs/deployment.md) | Security, env vars, running services, testing, roadmap |
 
 ---
 
